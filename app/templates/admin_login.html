@@ -1,24 +1,26 @@
-{% extends 'base.html' %}
+{% extends 'base_admin.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Админка — {{ brand }}{% endblock %}
-{% block body %}
-<div class="auth-wrap">
-  <div class="auth-card">
-    <div class="logo">{{ icon('shield', 26) }} {{ brand }} · admin</div>
-    <div class="card">
-      <h2 class="mb0">Вход администратора</h2>
-      {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
-      <form method="post" action="/admin/login">
-        <label>E-mail</label>
-        <input type="email" name="email" required autofocus>
-        <label>Пароль</label>
-        <input type="password" name="password" required>
-        <button class="btn primary mt" style="width:100%">{{ icon('lock', 16) }} Войти</button>
-      </form>
-    </div>
-    <div style="text-align:center">
-      <button class="btn ghost sm" onclick="toggleTheme()">{{ icon('moon', 15) }} Сменить тему</button>
-    </div>
+{% block title %}Вход{% endblock %}
+{% block auth %}
+<div class="auth-logo">
+  <span class="logo acc">{{ icon('shield', 26) }}</span>
+  <div style="text-align:center;">
+    <b style="font-size:18px;">{{ brand }}</b>
+    <div class="mut" style="font-size:13px;">вход для администраторов</div>
   </div>
+</div>
+<div class="card">
+  {% if error %}<div class="alert warn">{{ icon('zap') }} {{ error }}</div>{% endif %}
+  <form method="post" action="/admin/login">
+    <div class="field" style="margin-bottom:12px;">
+      <label>Логин</label>
+      <input name="email" type="text" required autofocus placeholder="Логин или e-mail администратора">
+    </div>
+    <div class="field" style="margin-bottom:18px;">
+      <label>Пароль</label>
+      <input name="password" type="password" required placeholder="••••••••">
+    </div>
+    <button type="submit" style="width:100%;">{{ icon('key') }} Войти</button>
+  </form>
 </div>
 {% endblock %}

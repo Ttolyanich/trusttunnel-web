@@ -1,8 +1,10 @@
-"""Клиентская часть: /login, /register, /dashboard, конфиги, скачивание."""
+"""Клиентская часть: /login, /register, /dashboard, конфиги, сброс пароля, скачивание."""
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 
-from . import conninfo, db, endpoint, security, webauth
+from . import conninfo, db, endpoint, mailer, security, webauth
 from .templating import templates
 
 router = APIRouter()
@@ -90,6 +92,57 @@ def logout():
     resp = RedirectResponse("/login", 302)
     resp.delete_cookie(webauth.USER_COOKIE)
     return resp
+
+
+@router.get("/forgot", response_class=HTMLResponse)
+def forgot_form(request: Request):
+    return templates.TemplateResponse(request, "forgot.html", {"brand": _brand(), "sent": False})
+
+
+@router.post("/forgot")
+def forgot(request: Request, email: str = Form()):
+    email = email.strip().lower()
+    user = db.get_user_by_email(email)
+    if user is not None:
+        token = security.new_token(16)
+        expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        db.create_email_token(token, user["id"], "reset", expires)
+        base = (db.get_setting("portal_url") or str(request.base_url).rstrip("/")).rstrip("/")
+        link = f"{base}/reset?token={token}"
+        if mailer.is_configured():
+            try:
+                mailer.send_mail(email, f"Сброс пароля — {_brand()}",
+                                 f"Для сброса пароля перейдите по ссылке (действует 24 часа):\n\n{link}\n")
+            except Exception as e:  # не палим наличие аккаунта, но логируем
+                print(f"[mail] reset send failed for {email}: {e}")
+        else:
+            print(f"[mail] SMTP не настроен. Ссылка сброса для {email}: {link}")
+    # Ответ одинаков независимо от наличия аккаунта.
+    return templates.TemplateResponse(request, "forgot.html", {"brand": _brand(), "sent": True, "email": email})
+
+
+@router.get("/reset", response_class=HTMLResponse)
+def reset_form(request: Request, token: str = ""):
+    return templates.TemplateResponse(
+        request, "reset.html", {"brand": _brand(), "token": token, "error": None, "done": False},
+    )
+
+
+@router.post("/reset")
+def reset(request: Request, token: str = Form(), password: str = Form()):
+    row = db.get_email_token(token)
+    ctx = {"brand": _brand(), "token": token, "error": None, "done": False}
+    if not row or row["purpose"] != "reset" or row["expires_at"] < datetime.now(timezone.utc).isoformat():
+        ctx["error"] = "Ссылка недействительна или устарела"
+        return templates.TemplateResponse(request, "reset.html", ctx, status_code=400)
+    if len(password) < 6:
+        ctx["error"] = "Пароль слишком короткий (мин. 6)"
+        return templates.TemplateResponse(request, "reset.html", ctx, status_code=400)
+    db.set_user_password(row["user_id"], security.hash_password(password))
+    db.delete_email_token(token)
+    return templates.TemplateResponse(
+        request, "reset.html", {"brand": _brand(), "token": "", "error": None, "done": True},
+    )
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

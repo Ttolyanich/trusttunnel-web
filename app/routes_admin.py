@@ -189,6 +189,8 @@ _SETTING_KEYS = [
     "registration_enabled",
     "show_address", "show_port", "show_domain", "show_sni",
     "show_username", "show_password", "show_protocol",
+    "smtp_host", "smtp_port", "smtp_user", "smtp_password",
+    "smtp_from", "smtp_tls", "portal_url",
 ]
 _CHECKBOX_KEYS = {
     "connection_hidden", "registration_enabled",

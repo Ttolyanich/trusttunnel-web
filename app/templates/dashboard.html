@@ -1,84 +1,76 @@
-{% extends 'base.html' %}
+{% extends 'base_client.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Мои конфиги — {{ brand }}{% endblock %}
+{% block title %}Кабинет{% endblock %}
 {% block body %}
-<div class="content" style="max-width:840px; margin:0 auto">
-  <div class="topbar">
-    <div class="flex">{{ icon('shield', 24) }} <h1 class="mb0">{{ brand }}</h1></div>
-    <div class="actions">
-      <span class="muted" style="font-size:13px">{{ user['email'] }}</span>
-      <button class="btn ghost sm" onclick="toggleTheme()" title="Тема">{{ icon('moon', 16) }}</button>
-      <a class="btn ghost sm" href="/logout" title="Выйти">{{ icon('logout', 16) }}</a>
-    </div>
+{% if error %}<div class="alert warn">{{ icon('zap') }} {{ error }}</div>{% endif %}
+
+<div class="card" style="background: linear-gradient(135deg, rgba(79,110,247,0.07), rgba(124,92,255,0.07)); border-color: rgba(79,110,247,0.15);">
+  <h2 style="margin-bottom:8px;">{{ icon('download') }} Скачать приложение TrustTunnel</h2>
+  <p class="mut" style="margin-top:-6px;margin-bottom:18px;font-size:13.5px;line-height:1.4;">
+    Установите приложение TrustTunnel на устройство, затем впишите настройки из раздела «Мои конфиги» ниже.
+  </p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>App Store (iOS)</span></a>
+    <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Google Play (Android)</span></a>
+    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>Windows / macOS / Linux</span></a>
   </div>
+</div>
 
-  {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
-  {% if not endpoint_ready %}
-    <div class="alert err">Сервер подключения ещё не настроен администратором. Конфиги можно создать, но подключение заработает после настройки домена/сертификата.</div>
-  {% endif %}
+{% if not endpoint_ready %}
+<div class="alert warn">{{ icon('zap') }} Сервер подключения ещё настраивается администратором. Конфиги можно создать, подключение заработает после настройки домена/сертификата.</div>
+{% endif %}
 
-  <div class="card">
-    <div class="flex between wrap">
-      <div class="card-title mb0">{{ icon('plus', 18) }} <h3 class="mb0">Новый конфиг</h3></div>
-    </div>
-    <form method="post" action="/configs" class="row mt">
-      <input type="text" name="label" placeholder="Название (напр. «Телефон», необязательно)">
-      <button class="btn primary" style="flex:0 0 auto">{{ icon('plus', 16) }} Создать</button>
-    </form>
-  </div>
+<div class="card">
+  <h2>{{ icon('plus') }} Новый конфиг</h2>
+  <form method="post" action="/configs" class="row">
+    <div class="field grow"><label>Метка устройства</label><input name="label" placeholder="Телефон, ноутбук…"></div>
+    <button type="submit">{{ icon('plus') }} Создать конфиг</button>
+  </form>
+</div>
 
-  {% if not configs %}
-    <div class="card" style="text-align:center; color:var(--muted)">
-      {{ icon('key', 30) }}<p>У вас пока нет конфигов. Создайте первый — и подключайтесь.</p>
-    </div>
-  {% endif %}
-
+<div class="card">
+  <h2>{{ icon('smartphone') }} Мои конфиги</h2>
+  <p class="mut" style="margin-top:-6px;font-size:13px;">Впишите значения в приложение TrustTunnel — каждое поле копируется кнопкой, либо скачайте файл.</p>
   {% for c in configs %}
-  <div class="card">
-    <div class="flex between wrap" style="margin-bottom:12px">
-      <div class="flex">{{ icon('key', 18) }} <b style="font-size:16px">{{ c.label }}</b></div>
-      <div class="actions">
-        <a class="btn ghost sm" href="/config/{{ c.id }}/download?fmt=txt" title="Скачать .txt">{{ icon('download', 15) }} Скачать</a>
-        <form method="post" action="/configs/{{ c.id }}/delete" onsubmit="return confirm('Удалить конфиг? Подключение перестанет работать.')">
-          <button class="btn ghost sm" title="Удалить">{{ icon('trash', 15) }}</button>
+  <div class="cfg">
+    <div class="cfg-head">
+      <b style="font-size:15px;">{{ c.label }}</b>
+      <div style="display:flex;gap:8px;">
+        <a class="btn ghost sm" href="/config/{{ c.id }}/download?fmt=txt">{{ icon('download', 14) }} Скачать</a>
+        <form method="post" action="/configs/{{ c.id }}/delete" onsubmit="return confirm('Отозвать конфиг? Подключение перестанет работать.');">
+          <button class="danger sm" type="submit">{{ icon('trash', 14) }} Отозвать</button>
         </form>
       </div>
     </div>
-    <div class="kv">
+    <div class="kv-list" style="margin-top:10px;">
       {% if c.show_address %}
-        <div class="k">Адрес сервера</div><div class="v">{{ c.address }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.address }}', this)">{{ icon('copy', 14) }}</button>
-      {% endif %}
-      {% if c.show_port %}
-        <div class="k">Порт</div><div class="v">{{ c.port }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.port }}', this)">{{ icon('copy', 14) }}</button>
+      <div class="kv"><span class="kv-name">Address</span><code>{{ c.address }}{% if c.show_port %}:{{ c.port }}{% endif %}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.address }}{% if c.show_port %}:{{ c.port }}{% endif %}', this)">{{ icon('copy', 13) }}</button></div>
       {% endif %}
       {% if c.show_domain and c.domain %}
-        <div class="k">Домен (SNI)</div><div class="v">{{ c.domain }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.domain }}', this)">{{ icon('copy', 14) }}</button>
+      <div class="kv"><span class="kv-name">Domain name from server certificate</span><code>{{ c.domain }}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.domain }}', this)">{{ icon('copy', 13) }}</button></div>
       {% endif %}
       {% if c.show_sni %}
-        <div class="k">Custom SNI</div><div class="v">{{ c.sni }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.sni }}', this)">{{ icon('copy', 14) }}</button>
-      {% endif %}
-      {% if c.show_protocol %}
-        <div class="k">Протокол</div><div class="v">{{ c.protocol }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.protocol }}', this)">{{ icon('copy', 14) }}</button>
+      <div class="kv"><span class="kv-name">Custom SNI</span><code>{{ c.sni }}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.sni }}', this)">{{ icon('copy', 13) }}</button></div>
       {% endif %}
       {% if c.show_username %}
-        <div class="k">Логин</div><div class="v">{{ c.username }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.username }}', this)">{{ icon('copy', 14) }}</button>
+      <div class="kv"><span class="kv-name">Username</span><code>{{ c.username }}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.username }}', this)">{{ icon('copy', 13) }}</button></div>
       {% endif %}
       {% if c.show_password %}
-        <div class="k">Пароль</div><div class="v">{{ c.password }}</div>
-        <button class="btn ghost sm" onclick="copyText('{{ c.password }}', this)">{{ icon('copy', 14) }}</button>
+      <div class="kv"><span class="kv-name">Password</span><code>{{ c.password }}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.password }}', this)">{{ icon('copy', 13) }}</button></div>
+      {% endif %}
+      {% if c.show_protocol %}
+      <div class="kv"><span class="kv-name">Protocol</span><code>{{ c.protocol }}</code>
+        <button type="button" class="ghost kv-copy" onclick="copyText('{{ c.protocol }}', this)">{{ icon('copy', 13) }}</button></div>
       {% endif %}
     </div>
   </div>
+  {% else %}
+  <p class="mut" style="margin:0;">Конфигов пока нет — создайте первый выше.</p>
   {% endfor %}
-
-  <p class="hint" style="text-align:center">
-    Введите эти поля вручную в приложении TrustTunnel. Скачанный файл содержит те же значения и deeplink.
-  </p>
 </div>
 {% endblock %}

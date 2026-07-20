@@ -1,28 +1,31 @@
-{% extends 'base.html' %}
+{% extends 'base_client.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Вход — {{ brand }}{% endblock %}
+{% block title %}Вход{% endblock %}
 {% block body %}
-<div class="auth-wrap">
-  <div class="auth-card">
-    <div class="logo">{{ icon('shield', 26) }} {{ brand }}</div>
-    <div class="card">
-      <h2 class="mb0">Вход в кабинет</h2>
-      <p class="hint">Войдите, чтобы создавать конфиги подключения.</p>
-      {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
-      <form method="post" action="/login">
-        <label>E-mail</label>
-        <input type="email" name="email" required autofocus>
-        <label>Пароль</label>
-        <input type="password" name="password" required>
-        <button class="btn primary mt" style="width:100%">{{ icon('lock', 16) }} Войти</button>
-      </form>
-      {% if registration_enabled %}
-      <p class="hint mt" style="text-align:center">Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
-      {% endif %}
-    </div>
-    <div style="text-align:center">
-      <button class="btn ghost sm" onclick="toggleTheme()">{{ icon('moon', 15) }} Сменить тему</button>
+<div class="auth-wrap"><div class="auth-card">
+  <div class="auth-logo">
+    <span class="logo green">{{ icon('shield', 26) }}</span>
+    <div style="text-align:center;">
+      <b style="font-size:18px;">{{ brand }}</b>
+      <div class="mut" style="font-size:13px;">вход в личный кабинет</div>
     </div>
   </div>
-</div>
+  <div class="card">
+    {% if error %}<div class="alert warn">{{ icon('zap') }} {{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+      <div class="field" style="margin-bottom:12px;">
+        <label>Email</label>
+        <input name="email" type="email" required autofocus placeholder="you@example.com">
+      </div>
+      <div class="field" style="margin-bottom:18px;">
+        <label>Пароль</label>
+        <input name="password" type="password" required placeholder="••••••••">
+      </div>
+      <button type="submit" style="width:100%;">{{ icon('key') }} Войти</button>
+    </form>
+    <p class="mut" style="margin:16px 0 0;text-align:center;">
+      {% if registration_enabled %}Нет аккаунта? <a href="/register">Регистрация</a> · {% endif %}<a href="/forgot">Забыли пароль?</a>
+    </p>
+  </div>
+</div></div>
 {% endblock %}

@@ -29,6 +29,14 @@ DEFAULT_SETTINGS: dict[str, str] = {
     # Прочее
     "registration_enabled": "1",      # открытая регистрация в клиентской части
     "brand_name": "TrustTunnel",      # заголовок в интерфейсе
+    # SMTP (для писем сброса пароля)
+    "smtp_host": "",
+    "smtp_port": "587",
+    "smtp_user": "",
+    "smtp_password": "",
+    "smtp_from": "",
+    "smtp_tls": "starttls",           # starttls | ssl | none
+    "portal_url": "",                 # публичный URL панели для ссылок в письмах
 }
 
 _SCHEMA = """
@@ -60,6 +68,13 @@ CREATE TABLE IF NOT EXISTS configs (
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS email_tokens (
+    token      TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose    TEXT NOT NULL,          -- reset
+    expires_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_configs_user   ON configs(user_id);
@@ -250,6 +265,24 @@ def active_credentials() -> list[dict]:
             "WHERE c.revoked_at IS NULL AND u.status = 'active'"
         ).fetchall()
     return [{"username": r["username"], "password": r["password"]} for r in rows]
+
+
+def create_email_token(token: str, user_id: int, purpose: str, expires_at: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO email_tokens(token, user_id, purpose, expires_at) VALUES (?, ?, ?, ?)",
+            (token, user_id, purpose, expires_at),
+        )
+
+
+def get_email_token(token: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute("SELECT * FROM email_tokens WHERE token = ?", (token,)).fetchone()
+
+
+def delete_email_token(token: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM email_tokens WHERE token = ?", (token,))
 
 
 def counts() -> dict[str, int]:
