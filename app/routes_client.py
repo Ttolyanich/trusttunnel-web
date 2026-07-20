@@ -16,9 +16,20 @@ def _brand() -> str:
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    if webauth.current_user(request):
-        return RedirectResponse("/dashboard", 302)
-    return RedirectResponse("/login", 302)
+    user = webauth.current_user(request)
+    if not user:
+        return RedirectResponse("/login", 302)
+    settings = db.get_settings()
+    configs = [conninfo.connection_info(c, settings) | {"id": c["id"]}
+               for c in db.list_user_configs(user["id"])]
+    return templates.TemplateResponse(
+        request, "dashboard.html",
+        {
+            "brand": _brand(), "user": user, "configs": configs,
+            "endpoint_ready": bool(endpoint.effective_domain(settings)),
+            "error": request.query_params.get("error"),
+        },
+    )
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -46,7 +57,7 @@ def login(request: Request, email: str = Form(), password: str = Form()):
              "error": "Аккаунт заблокирован"},
             status_code=403,
         )
-    resp = RedirectResponse("/dashboard", 302)
+    resp = RedirectResponse("/", 302)
     resp.set_cookie(
         webauth.USER_COOKIE, security.create_session_token(str(user["id"]), "user"),
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
@@ -79,7 +90,7 @@ def register(request: Request, email: str = Form(), password: str = Form()):
             status_code=400,
         )
     user_id = db.create_user(email, security.hash_password(password))
-    resp = RedirectResponse("/dashboard", 302)
+    resp = RedirectResponse("/", 302)
     resp.set_cookie(
         webauth.USER_COOKIE, security.create_session_token(str(user_id), "user"),
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
@@ -147,20 +158,7 @@ def reset(request: Request, token: str = Form(), password: str = Form()):
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    user = webauth.current_user(request)
-    if not user:
-        return RedirectResponse("/login", 302)
-    settings = db.get_settings()
-    configs = [conninfo.connection_info(c, settings) | {"id": c["id"]}
-               for c in db.list_user_configs(user["id"])]
-    return templates.TemplateResponse(
-        request, "dashboard.html",
-        {
-            "brand": _brand(), "user": user, "configs": configs,
-            "endpoint_ready": bool(endpoint.effective_domain(settings)),
-            "error": request.query_params.get("error"),
-        },
-    )
+    return RedirectResponse("/", 302)
 
 
 @router.post("/configs")
@@ -176,7 +174,7 @@ def create_config(request: Request, label: str = Form("")):
         label=label.strip() or None,
     )
     endpoint.manager.apply_credentials()
-    return RedirectResponse("/dashboard", 302)
+    return RedirectResponse("/", 302)
 
 
 @router.post("/configs/{config_id}/delete")
@@ -188,7 +186,7 @@ def delete_config(request: Request, config_id: int):
     if cfg and cfg["user_id"] == user["id"]:
         db.delete_config(config_id)
         endpoint.manager.apply_credentials()
-    return RedirectResponse("/dashboard", 302)
+    return RedirectResponse("/", 302)
 
 
 @router.get("/config/{config_id}/download")
