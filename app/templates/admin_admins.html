@@ -9,30 +9,6 @@
   <button type="button" onclick="openModal('adminModal')">{{ icon('user-plus', 16) }} Добавить администратора</button>
 </div>
 
-<!-- Модальное окно создания администратора -->
-<div class="modal-backdrop" id="adminModal" onclick="if(event.target===this)closeModal('adminModal')">
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
-    <div class="modal-head">
-      <span class="m-ic" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">{{ icon('user-plus', 20) }}</span>
-      <h2 id="adminModalTitle" style="flex:1;">Добавить администратора</h2>
-      <button type="button" class="modal-x" onclick="closeModal('adminModal')" aria-label="Закрыть" style="font-size:20px;">&times;</button>
-    </div>
-    <p class="modal-sub">Новый администратор сразу сможет войти в панель управления под своим логином.</p>
-    <form method="post" action="/admin/admins/create" style="display:flex; flex-direction:column; gap:16px;">
-      <div class="field"><label>Логин (для входа)</label>
-        <input name="email" required placeholder="admin_login"></div>
-      <div class="field"><label>Почта восстановления</label>
-        <input name="recovery_email" type="email" placeholder="admin@example.com"></div>
-      <div class="field"><label>Пароль (мин. 8 символов)</label>
-        <input name="password" type="password" required minlength="8" placeholder="пароль для входа"></div>
-      <div class="modal-actions">
-        <button type="button" class="ghost" onclick="closeModal('adminModal')">Отмена</button>
-        <button type="submit">{{ icon('plus') }} Добавить</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <div class="card">
   <h2>{{ icon('shield') }} Все администраторы</h2>
   {% if not admins %}
@@ -76,5 +52,31 @@
     </table>
   </div>
   {% endif %}
+</div>
+{% endblock %}
+
+{% block modal %}
+<!-- Модальное окно создания администратора -->
+<div class="modal-backdrop" id="adminModal" onclick="if(event.target===this)closeModal('adminModal')">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+    <div class="modal-head">
+      <span class="m-ic" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">{{ icon('user-plus', 20) }}</span>
+      <h2 id="adminModalTitle" style="flex:1;">Добавить администратора</h2>
+      <button type="button" class="modal-x" onclick="closeModal('adminModal')" aria-label="Закрыть" style="font-size:20px;">&times;</button>
+    </div>
+    <p class="modal-sub">Новый администратор сразу сможет войти в панель управления под своим логином.</p>
+    <form method="post" action="/admin/admins/create" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="field"><label>Логин (для входа)</label>
+        <input name="email" required placeholder="admin_login"></div>
+      <div class="field"><label>Почта восстановления</label>
+        <input name="recovery_email" type="email" placeholder="admin@example.com"></div>
+      <div class="field"><label>Пароль (мин. 8 символов)</label>
+        <input name="password" type="password" required minlength="8" placeholder="пароль для входа"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" onclick="closeModal('adminModal')">Отмена</button>
+        <button type="submit">{{ icon('plus') }} Добавить</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}
