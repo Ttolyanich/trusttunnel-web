@@ -156,8 +156,9 @@ def set_settings(items: dict[str, str]) -> None:
 # ── Админы ───────────────────────────────────────────────────────────────────
 def get_admin_by_email(email: str) -> sqlite3.Row | None:
     with connect() as conn:
+        val = email.strip().lower()
         return conn.execute(
-            "SELECT * FROM admins WHERE email = ?", (email.strip().lower(),)
+            "SELECT * FROM admins WHERE email = ? OR recovery_email = ?", (val, val)
         ).fetchone()
 
 
