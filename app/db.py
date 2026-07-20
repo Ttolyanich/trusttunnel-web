@@ -163,6 +163,25 @@ def set_admin_password(admin_id: int, password_hash: str) -> None:
         )
 
 
+def list_admins() -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute("SELECT id, email, created_at FROM admins ORDER BY id DESC").fetchall()
+
+
+def create_admin(email: str, password_hash: str) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO admins(email, password_hash) VALUES (?, ?)",
+            (email.strip().lower(), password_hash),
+        )
+        return cur.lastrowid
+
+
+def delete_admin(admin_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM admins WHERE id = ?", (admin_id,))
+
+
 # ── Пользователи ─────────────────────────────────────────────────────────────
 def get_user_by_email(email: str) -> sqlite3.Row | None:
     with connect() as conn:

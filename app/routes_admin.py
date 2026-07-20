@@ -139,6 +139,54 @@ def user_status(request: Request, user_id: int, status: str = Form()):
     return RedirectResponse(f"/admin/users/{user_id}?msg=Статус обновлён", 302)
 
 
+# ── Администраторы ────────────────────────────────────────────────────────────
+@router.get("/admins", response_class=HTMLResponse)
+def admins_list(request: Request):
+    admin = webauth.current_admin(request)
+    if not admin:
+        return RedirectResponse("/admin/login", 302)
+    return templates.TemplateResponse(
+        request, "admin_admins.html",
+        _ctx(request, admin, admins=db.list_admins(),
+             msg=request.query_params.get("msg"), err=request.query_params.get("err")),
+    )
+
+
+@router.post("/admins/create")
+def create_admin(request: Request, email: str = Form(), password: str = Form()):
+    admin = webauth.current_admin(request)
+    if not admin:
+        return RedirectResponse("/admin/login", 302)
+    email = email.strip().lower()
+    if db.get_admin_by_email(email):
+        return RedirectResponse("/admin/admins?err=Администратор уже существует", 302)
+    if len(password) < 8:
+        return RedirectResponse("/admin/admins?err=Пароль слишком короткий (мин. 8)", 302)
+    db.create_admin(email, security.hash_password(password))
+    return RedirectResponse("/admin/admins?msg=Администратор создан", 302)
+
+
+@router.post("/admins/{admin_id}/password")
+def change_admin_password(request: Request, admin_id: int, password: str = Form()):
+    if not webauth.current_admin(request):
+        return RedirectResponse("/admin/login", 302)
+    if len(password) < 8:
+        return RedirectResponse("/admin/admins?err=Пароль слишком короткий (мин. 8)", 302)
+    db.set_admin_password(admin_id, security.hash_password(password))
+    return RedirectResponse("/admin/admins?msg=Пароль администратора изменен", 302)
+
+
+@router.post("/admins/{admin_id}/delete")
+def delete_admin(request: Request, admin_id: int):
+    admin = webauth.current_admin(request)
+    if not admin:
+        return RedirectResponse("/admin/login", 302)
+    if admin["id"] == admin_id:
+        return RedirectResponse("/admin/admins?err=Нельзя удалить самого себя", 302)
+    db.delete_admin(admin_id)
+    return RedirectResponse("/admin/admins?msg=Администратор удален", 302)
+
+
 @router.post("/users/{user_id}/delete")
 def user_delete(request: Request, user_id: int):
     if not webauth.current_admin(request):
