@@ -8,7 +8,8 @@
 <div class="card">
   <h2>{{ icon('user-plus') }} Создать администратора</h2>
   <form method="post" action="/admin/admins/create" class="row">
-    <div class="field grow"><label>Email</label><input type="email" name="email" required placeholder="admin@example.com"></div>
+    <div class="field grow"><label>Логин (для входа)</label><input type="text" name="email" required placeholder="admin_login"></div>
+    <div class="field grow"><label>Почта восстановления</label><input type="email" name="recovery_email" placeholder="admin@example.com"></div>
     <div class="field grow"><label>Пароль</label><input type="password" name="password" minlength="8" required placeholder="мин. 8"></div>
     <button type="submit">{{ icon('plus') }} Добавить</button>
   </form>
@@ -26,7 +27,12 @@
       {% for a in admins %}
         <tr>
           <td><div class="who"><span class="avatar" style="background: var(--amber-soft); color: var(--amber);">{{ a['email'][0]|upper }}</span>
-            <span>{{ a['email'] }}</span></div></td>
+            <div>
+              <span>{{ a['email'] }}</span>
+              {% if a['recovery_email'] %}
+                <div class="mut" style="font-size:11px;">почта: {{ a['recovery_email'] }}</div>
+              {% endif %}
+            </div></div></td>
           <td class="mut">{{ a['created_at'][:10] }}</td>
           <td>
             <div style="display:flex; gap:12px; align-items:center; justify-content:flex-end;">

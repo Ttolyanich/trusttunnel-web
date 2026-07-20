@@ -153,16 +153,17 @@ def admins_list(request: Request):
 
 
 @router.post("/admins/create")
-def create_admin(request: Request, email: str = Form(), password: str = Form()):
+def create_admin(request: Request, email: str = Form(), recovery_email: str = Form(None), password: str = Form()):
     admin = webauth.current_admin(request)
     if not admin:
         return RedirectResponse("/admin/login", 302)
     email = email.strip().lower()
+    recovery_email = recovery_email.strip().lower() if recovery_email else None
     if db.get_admin_by_email(email):
         return RedirectResponse("/admin/admins?err=Администратор уже существует", 302)
     if len(password) < 8:
         return RedirectResponse("/admin/admins?err=Пароль слишком короткий (мин. 8)", 302)
-    db.create_admin(email, security.hash_password(password))
+    db.create_admin(email, recovery_email, security.hash_password(password))
     return RedirectResponse("/admin/admins?msg=Администратор создан", 302)
 
 
@@ -285,3 +286,25 @@ def admin_password(request: Request, password: str = Form()):
         return RedirectResponse("/admin/dashboard?err=Пароль слишком короткий (мин. 8)", 302)
     db.set_admin_password(admin["id"], security.hash_password(password))
     return RedirectResponse("/admin/dashboard?msg=Пароль администратора обновлён", 302)
+
+
+@router.post("/account/profile")
+def admin_profile(request: Request, email: str = Form(), recovery_email: str = Form(None)):
+    admin = webauth.current_admin(request)
+    if not admin:
+        return RedirectResponse("/admin/login", 302)
+    email = email.strip().lower()
+    recovery_email = recovery_email.strip().lower() if recovery_email else None
+    
+    # Проверить уникальность логина
+    existing = db.get_admin_by_email(email)
+    if existing and existing["id"] != admin["id"]:
+        return RedirectResponse("/admin/dashboard?err=Логин уже занят другим администратором", 302)
+        
+    db.set_admin_recovery_email(admin["id"], recovery_email)
+    
+    # Обновить email (логин)
+    with db.connect() as conn:
+        conn.execute("UPDATE admins SET email = ? WHERE id = ?", (email, admin["id"]))
+        
+    return RedirectResponse("/admin/dashboard?msg=Профиль успешно обновлён", 302)

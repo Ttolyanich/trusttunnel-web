@@ -25,10 +25,17 @@
 </div>
 
 <div class="card">
-  <h2>{{ icon('lock') }} Сменить свой пароль</h2>
+  <h2>{{ icon('user') }} Мой аккаунт</h2>
+  <form method="post" action="/admin/account/profile" class="row" style="margin-bottom: 20px;">
+    <div class="field grow"><label>Логин (для входа)</label><input type="text" name="email" value="{{ admin['email'] }}" required></div>
+    <div class="field grow"><label>Почта восстановления</label><input type="email" name="recovery_email" value="{{ admin['recovery_email'] or '' }}" placeholder="для сброса пароля"></div>
+    <button type="submit" class="ghost" style="height:42px;">{{ icon('check') }} Сохранить</button>
+  </form>
+  
+  <h3 style="font-size:15px; margin-top:20px; border-top:1px dashed var(--line); padding-top:16px; display:flex; align-items:center; gap:8px;">{{ icon('lock', 14) }} Смена пароля</h3>
   <form method="post" action="/admin/account/password" class="row">
     <div class="field grow"><label>Новый пароль (мин. 8)</label><input type="password" name="password" minlength="8" required placeholder="••••••••"></div>
-    <button type="submit">{{ icon('check') }} Обновить</button>
+    <button type="submit">{{ icon('check') }} Обновить пароль</button>
   </form>
 </div>
 {% endblock %}

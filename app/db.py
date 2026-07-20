@@ -42,7 +42,8 @@ DEFAULT_SETTINGS: dict[str, str] = {
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS admins (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    email         TEXT NOT NULL UNIQUE,
+    email         TEXT NOT NULL UNIQUE,            -- login
+    recovery_email TEXT,                           -- recovery email
     password_hash TEXT NOT NULL,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -104,6 +105,10 @@ def init_db() -> None:
     with connect() as conn:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(_SCHEMA)
+        try:
+            conn.execute("ALTER TABLE admins ADD COLUMN recovery_email TEXT")
+        except sqlite3.OperationalError:
+            pass
         # Настройки: добавляем только отсутствующие ключи (не затираем правки админа).
         for key, value in DEFAULT_SETTINGS.items():
             conn.execute(
@@ -165,16 +170,24 @@ def set_admin_password(admin_id: int, password_hash: str) -> None:
 
 def list_admins() -> list[sqlite3.Row]:
     with connect() as conn:
-        return conn.execute("SELECT id, email, created_at FROM admins ORDER BY id DESC").fetchall()
+        return conn.execute("SELECT id, email, recovery_email, created_at FROM admins ORDER BY id DESC").fetchall()
 
 
-def create_admin(email: str, password_hash: str) -> int:
+def create_admin(email: str, recovery_email: str | None, password_hash: str) -> int:
     with connect() as conn:
         cur = conn.execute(
-            "INSERT INTO admins(email, password_hash) VALUES (?, ?)",
-            (email.strip().lower(), password_hash),
+            "INSERT INTO admins(email, recovery_email, password_hash) VALUES (?, ?, ?)",
+            (email.strip().lower(), recovery_email.strip().lower() if recovery_email else None, password_hash),
         )
         return cur.lastrowid
+
+
+def set_admin_recovery_email(admin_id: int, recovery_email: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE admins SET recovery_email = ? WHERE id = ?",
+            (recovery_email.strip().lower() if recovery_email else None, admin_id)
+        )
 
 
 def delete_admin(admin_id: int) -> None:
