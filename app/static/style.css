@@ -246,3 +246,51 @@ button.danger:hover, .btn.danger:hover { background: var(--warn); color: #fff; t
   .brand small { display: none; }
   body.client main { margin: 20px auto; padding: 0 12px 40px; }
 }
+
+/* ---------- modal ---------- */
+.modal-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-backdrop.open { display: flex; animation: backdropIn 0.18s ease both; }
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+  width: 100%; max-width: 460px;
+  max-height: calc(100vh - 48px); overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  animation: modalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+.modal-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 6px; }
+.modal-head .m-ic {
+  width: 40px; height: 40px; flex: none; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #4f6ef7, #7c5cff); color: #fff;
+  box-shadow: 0 6px 16px rgba(79, 110, 247, 0.28);
+}
+.modal-head h2 { font-size: 17px; font-weight: 700; margin: 2px 0 0; display: flex; align-items: center; gap: 8px; letter-spacing: -0.2px; }
+.modal-head h2 .ic { color: var(--acc); }
+.modal-x { margin-left: auto; background: none; border: 0; box-shadow: none; color: var(--mut); padding: 6px; cursor: pointer; border-radius: 8px; line-height: 1; }
+.modal-x:hover { background: var(--card2); color: var(--fg); transform: none; box-shadow: none; }
+.modal-sub { color: var(--mut); font-size: 13.5px; margin: 0 0 18px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px !important;
+  cursor: pointer;
+}

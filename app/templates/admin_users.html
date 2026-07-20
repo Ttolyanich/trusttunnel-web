@@ -5,13 +5,30 @@
 {% if msg %}<div class="alert ok">{{ icon('check') }} {{ msg }}</div>{% endif %}
 {% if err %}<div class="alert warn">{{ icon('zap') }} {{ err }}</div>{% endif %}
 
-<div class="card">
-  <h2>{{ icon('user-plus') }} Создать пользователя</h2>
-  <form method="post" action="/admin/users/create" class="row">
-    <div class="field grow"><label>Email</label><input type="email" name="email" required placeholder="you@example.com"></div>
-    <div class="field grow"><label>Пароль</label><input type="password" name="password" minlength="6" required placeholder="мин. 6"></div>
-    <button type="submit">{{ icon('plus') }} Создать</button>
-  </form>
+<div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+  <button type="button" onclick="openModal('userModal')">{{ icon('user-plus', 16) }} Создать пользователя</button>
+</div>
+
+<!-- Модальное окно создания пользователя -->
+<div class="modal-backdrop" id="userModal" onclick="if(event.target===this)closeModal('userModal')">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+    <div class="modal-head">
+      <span class="m-ic">{{ icon('user-plus', 20) }}</span>
+      <h2 id="userModalTitle" style="flex:1;">Создать пользователя</h2>
+      <button type="button" class="modal-x" onclick="closeModal('userModal')" aria-label="Закрыть" style="font-size:20px;">&times;</button>
+    </div>
+    <p class="modal-sub">Новый пользователь сразу сможет войти в свой кабинет.</p>
+    <form method="post" action="/admin/users/create" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="field"><label>Email (логин)</label>
+        <input name="email" type="email" required placeholder="user@example.com"></div>
+      <div class="field"><label>Пароль (мин. 6 символов)</label>
+        <input name="password" type="password" required minlength="6" placeholder="пароль для входа"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" onclick="closeModal('userModal')">Отмена</button>
+        <button type="submit">{{ icon('plus') }} Создать</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div class="card">

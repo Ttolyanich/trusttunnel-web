@@ -65,6 +65,25 @@
       setTimeout(function(){ btn.innerHTML = old; btn.classList.remove('ok'); }, 1500);
     });
   }
+  function openModal(id) {
+    var m = document.getElementById(id);
+    if (!m) return;
+    m.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    var f = m.querySelector('input, select, textarea');
+    if (f) setTimeout(function(){ f.focus(); }, 40);
+  }
+  function closeModal(id) {
+    var m = document.getElementById(id);
+    if (m) m.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var open = document.querySelector('.modal-backdrop.open');
+      if (open) closeModal(open.id);
+    }
+  });
 </script>
 </body>
 </html>
