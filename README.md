@@ -67,10 +67,10 @@ docker compose up --build -d
 2. **Через CLI-скрипт**: если панель остановлена или вам нужно сбросить пароль из терминала, используйте встроенный скрипт на хост-машине:
    ```bash
    # Показать список всех администраторов
-   /opt/ttweb/.venv/bin/python scripts/manage_admins.py --db /opt/ttweb/data/trusttunnel-web.db list
+   /opt/trusttunnel-web/.venv/bin/python scripts/manage_admins.py --db /opt/trusttunnel-web/data/trusttunnel-web.db list
 
    # Создать администратора (логин, пароль, опционально почта восстановления)
-   /opt/ttweb/.venv/bin/python scripts/manage_admins.py --db /opt/ttweb/data/trusttunnel-web.db create admin_login "пароль" --recovery-email "admin@example.com"
+   /opt/trusttunnel-web/.venv/bin/python scripts/manage_admins.py --db /opt/trusttunnel-web/data/trusttunnel-web.db create admin_login "пароль" --recovery-email "admin@example.com"
    ```
 
 ## Сертификаты: два режима
