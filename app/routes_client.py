@@ -36,7 +36,8 @@ def index(request: Request):
 def login_form(request: Request):
     return templates.TemplateResponse(
         request, "login.html",
-        {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1", "error": None},
+        {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
+         "error": None, "msg": request.query_params.get("msg")},
     )
 
 
@@ -47,14 +48,21 @@ def login(request: Request, email: str = Form(), password: str = Form()):
         return templates.TemplateResponse(
             request, "login.html",
             {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-             "error": "Неверный e-mail или пароль"},
+             "error": "Неверный e-mail или пароль", "msg": None},
             status_code=401,
         )
-    if user["status"] != "active":
+    if user["status"] == "pending":
         return templates.TemplateResponse(
             request, "login.html",
             {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-             "error": "Аккаунт заблокирован"},
+             "error": "Ваш аккаунт ожидает подтверждения администратором", "msg": None},
+            status_code=403,
+        )
+    elif user["status"] != "active":
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
+             "error": "Аккаунт заблокирован", "msg": None},
             status_code=403,
         )
     resp = RedirectResponse("/", 302)
@@ -69,32 +77,75 @@ def login(request: Request, email: str = Form(), password: str = Form()):
 def register_form(request: Request):
     if db.get_setting("registration_enabled") != "1":
         return RedirectResponse("/login", 302)
-    return templates.TemplateResponse(
-        request, "register.html", {"brand": _brand(), "error": None},
+    import random
+    import hashlib
+    a = random.randint(1, 9)
+    b = random.randint(1, 9)
+    ans = a + b
+    salt = "trusttunnel-captcha-salt"
+    h = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+    resp = templates.TemplateResponse(
+        request, "register.html",
+        {"brand": _brand(), "error": None, "captcha_a": a, "captcha_b": b},
     )
+    resp.set_cookie("captcha_hash", h, max_age=300, httponly=True, samesite="lax")
+    return resp
 
 
 @router.post("/register")
-def register(request: Request, email: str = Form(), password: str = Form()):
+def register(request: Request, email: str = Form(), password: str = Form(), captcha: str = Form()):
     if db.get_setting("registration_enabled") != "1":
         return RedirectResponse("/login", 302)
+    import random
+    import hashlib
+    
+    # Верификация капчи
+    cookie_hash = request.cookies.get("captcha_hash")
+    salt = "trusttunnel-captcha-salt"
+    user_hash = hashlib.sha256(f"{captcha.strip()}-{salt}".encode()).hexdigest()
+    if not cookie_hash or user_hash != cookie_hash:
+        a = random.randint(1, 9)
+        b = random.randint(1, 9)
+        ans = a + b
+        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+        resp = templates.TemplateResponse(
+            request, "register.html",
+            {"brand": _brand(), "error": "Неверный ответ на проверочный вопрос", "captcha_a": a, "captcha_b": b},
+            status_code=400,
+        )
+        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        return resp
+        
     email = email.strip().lower()
     if len(password) < 6:
-        return templates.TemplateResponse(
-            request, "register.html", {"brand": _brand(), "error": "Пароль слишком короткий (мин. 6)"},
+        a = random.randint(1, 9)
+        b = random.randint(1, 9)
+        ans = a + b
+        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+        resp = templates.TemplateResponse(
+            request, "register.html",
+            {"brand": _brand(), "error": "Пароль слишком короткий (мин. 6)", "captcha_a": a, "captcha_b": b},
             status_code=400,
         )
+        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        return resp
+        
     if db.get_user_by_email(email):
-        return templates.TemplateResponse(
-            request, "register.html", {"brand": _brand(), "error": "Такой e-mail уже зарегистрирован"},
+        a = random.randint(1, 9)
+        b = random.randint(1, 9)
+        ans = a + b
+        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+        resp = templates.TemplateResponse(
+            request, "register.html",
+            {"brand": _brand(), "error": "Такой e-mail уже зарегистрирован", "captcha_a": a, "captcha_b": b},
             status_code=400,
         )
-    user_id = db.create_user(email, security.hash_password(password))
-    resp = RedirectResponse("/", 302)
-    resp.set_cookie(
-        webauth.USER_COOKIE, security.create_session_token(str(user_id), "user"),
-        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
-    )
+        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        return resp
+        
+    db.create_user(email, security.hash_password(password), status="pending")
+    resp = RedirectResponse("/login?msg=Регистрация успешна. Ожидайте подтверждения аккаунта администратором.", 302)
+    resp.delete_cookie("captcha_hash")
     return resp
 
 
