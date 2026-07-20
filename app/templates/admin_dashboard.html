@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Дашборд — {{ brand }}{% endblock %}
+{% block body %}
+<div class="shell">
+  {% set active = 'dashboard' %}
+  {% include '_admin_nav.html' %}
+  <main class="content">
+    <div class="topbar">
+      <div class="flex">
+        <button class="btn ghost hamburger" onclick="toggleSidebar()">{{ icon('menu', 18) }}</button>
+        <h1 class="mb0">Дашборд</h1>
+      </div>
+      <span class="muted" style="font-size:13px">{{ admin['email'] }}</span>
+    </div>
+
+    {% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+    {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
+
+    <div class="grid cols-3">
+      <div class="stat"><div class="n">{{ counts.users }}</div><div class="l">Пользователей</div></div>
+      <div class="stat"><div class="n">{{ counts.configs }}</div><div class="l">Активных конфигов</div></div>
+      <div class="stat"><div class="n">{{ counts.blocked }}</div><div class="l">Заблокировано</div></div>
+    </div>
+
+    <div class="card mt">
+      <div class="card-title">{{ icon('server', 18) }} <h3 class="mb0">VPN-endpoint</h3></div>
+      <div class="kv">
+        <div class="k">Состояние</div>
+        <div class="v">
+          {% if status.running %}<span class="pill ok">{{ icon('check', 13) }} работает</span>
+          {% else %}<span class="pill warn">остановлен</span>{% endif %}
+        </div><div></div>
+        <div class="k">Домен подключения</div><div class="v">{{ status.domain or '— не задан —' }}</div><div></div>
+        <div class="k">Сертификат</div>
+        <div class="v">{% if status.cert_present %}<span class="pill ok">найден</span>{% else %}<span class="pill off">нет</span>{% endif %}</div><div></div>
+        <div class="k">Порт</div><div class="v">{{ status.port }}</div><div></div>
+      </div>
+      <p class="hint">Параметры меняются на странице <a href="/admin/settings">Настройки</a>.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">{{ icon('lock', 18) }} <h3 class="mb0">Сменить свой пароль</h3></div>
+      <form method="post" action="/admin/account/password" class="row">
+        <input type="password" name="password" placeholder="Новый пароль (мин. 8)" minlength="8" required>
+        <button class="btn primary" style="flex:0 0 auto">Обновить</button>
+      </form>
+    </div>
+  </main>
+</div>
+{% endblock %}

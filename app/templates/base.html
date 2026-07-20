@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ brand }}{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f6bff' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+  (function () {
+    var t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  })();
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var next = cur === 'dark' ? 'light' : (cur === 'light' ? 'dark' :
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+  function copyText(text, el) {
+    navigator.clipboard.writeText(text).then(function () {
+      if (!el) return;
+      var old = el.innerHTML; el.innerHTML = '✓';
+      setTimeout(function () { el.innerHTML = old; }, 900);
+    });
+  }
+  function toggleSidebar() {
+    var s = document.querySelector('.sidebar');
+    if (s) s.classList.toggle('open');
+  }
+</script>
+</head>
+<body>
+{% from '_icons.html' import icon %}
+{% block body %}{% endblock %}
+</body>
+</html>

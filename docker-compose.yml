@@ -1,0 +1,27 @@
+# trusttunnel-web — один контейнер: панель + endpoint.
+#
+# Вариант по умолчанию — за обратным прокси (nginx/Caddy/Traefik):
+#   • панель слушает 127.0.0.1:8000 (TLS терминирует прокси);
+#   • endpoint принимает VPN на 8443 (tcp+udp);
+#   • сертификаты берём с хоста из /etc/letsencrypt (режим "external").
+#
+# Вариант "letsencrypt" (панель НЕ за прокси): раскомментируйте порты 80/443
+# и смонтируйте /etc/letsencrypt на запись (без :ro) — certbot выпустит серт сам.
+
+services:
+  trusttunnel-web:
+    build: .
+    # или готовый образ:
+    # image: ghcr.io/ttolyanich/trusttunnel-web:latest
+    container_name: trusttunnel-web
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"    # панель за прокси (только loopback)
+      - "8443:8443/tcp"          # VPN-endpoint
+      - "8443:8443/udp"
+      # - "80:80"                # нужен для режима letsencrypt (выпуск/продление)
+    volumes:
+      - ./data:/data                                  # SQLite + рантайм
+      - /etc/letsencrypt:/etc/letsencrypt:ro          # серты хоста (режим external)
+      # - /etc/letsencrypt:/etc/letsencrypt            # на запись — для режима letsencrypt

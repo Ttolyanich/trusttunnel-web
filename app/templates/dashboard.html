@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Мои конфиги — {{ brand }}{% endblock %}
+{% block body %}
+<div class="content" style="max-width:840px; margin:0 auto">
+  <div class="topbar">
+    <div class="flex">{{ icon('shield', 24) }} <h1 class="mb0">{{ brand }}</h1></div>
+    <div class="actions">
+      <span class="muted" style="font-size:13px">{{ user['email'] }}</span>
+      <button class="btn ghost sm" onclick="toggleTheme()" title="Тема">{{ icon('moon', 16) }}</button>
+      <a class="btn ghost sm" href="/logout" title="Выйти">{{ icon('logout', 16) }}</a>
+    </div>
+  </div>
+
+  {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
+  {% if not endpoint_ready %}
+    <div class="alert err">Сервер подключения ещё не настроен администратором. Конфиги можно создать, но подключение заработает после настройки домена/сертификата.</div>
+  {% endif %}
+
+  <div class="card">
+    <div class="flex between wrap">
+      <div class="card-title mb0">{{ icon('plus', 18) }} <h3 class="mb0">Новый конфиг</h3></div>
+    </div>
+    <form method="post" action="/configs" class="row mt">
+      <input type="text" name="label" placeholder="Название (напр. «Телефон», необязательно)">
+      <button class="btn primary" style="flex:0 0 auto">{{ icon('plus', 16) }} Создать</button>
+    </form>
+  </div>
+
+  {% if not configs %}
+    <div class="card" style="text-align:center; color:var(--muted)">
+      {{ icon('key', 30) }}<p>У вас пока нет конфигов. Создайте первый — и подключайтесь.</p>
+    </div>
+  {% endif %}
+
+  {% for c in configs %}
+  <div class="card">
+    <div class="flex between wrap" style="margin-bottom:12px">
+      <div class="flex">{{ icon('key', 18) }} <b style="font-size:16px">{{ c.label }}</b></div>
+      <div class="actions">
+        <a class="btn ghost sm" href="/config/{{ c.id }}/download?fmt=txt" title="Скачать .txt">{{ icon('download', 15) }} Скачать</a>
+        <form method="post" action="/configs/{{ c.id }}/delete" onsubmit="return confirm('Удалить конфиг? Подключение перестанет работать.')">
+          <button class="btn ghost sm" title="Удалить">{{ icon('trash', 15) }}</button>
+        </form>
+      </div>
+    </div>
+    <div class="kv">
+      {% if c.show_address %}
+        <div class="k">Адрес сервера</div><div class="v">{{ c.address }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.address }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_port %}
+        <div class="k">Порт</div><div class="v">{{ c.port }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.port }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_domain and c.domain %}
+        <div class="k">Домен (SNI)</div><div class="v">{{ c.domain }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.domain }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_sni %}
+        <div class="k">Custom SNI</div><div class="v">{{ c.sni }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.sni }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_protocol %}
+        <div class="k">Протокол</div><div class="v">{{ c.protocol }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.protocol }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_username %}
+        <div class="k">Логин</div><div class="v">{{ c.username }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.username }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+      {% if c.show_password %}
+        <div class="k">Пароль</div><div class="v">{{ c.password }}</div>
+        <button class="btn ghost sm" onclick="copyText('{{ c.password }}', this)">{{ icon('copy', 14) }}</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <p class="hint" style="text-align:center">
+    Введите эти поля вручную в приложении TrustTunnel. Скачанный файл содержит те же значения и deeplink.
+  </p>
+</div>
+{% endblock %}

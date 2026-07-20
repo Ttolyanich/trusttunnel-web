@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Конфиги — {{ brand }}{% endblock %}
+{% block body %}
+<div class="shell">
+  {% set active = 'configs' %}
+  {% include '_admin_nav.html' %}
+  <main class="content">
+    <div class="topbar">
+      <div class="flex">
+        <button class="btn ghost hamburger" onclick="toggleSidebar()">{{ icon('menu', 18) }}</button>
+        <h1 class="mb0">Все конфиги</h1>
+      </div>
+    </div>
+    <div class="card">
+      {% if not configs %}
+        <p class="muted mb0">Конфигов пока нет.</p>
+      {% else %}
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>ID</th><th>Пользователь</th><th>Название</th><th>Логин</th><th>Создан</th><th></th></tr></thead>
+        <tbody>
+        {% for c in configs %}
+          <tr>
+            <td class="muted">{{ c['id'] }}</td>
+            <td><a href="/admin/users/{{ c['user_id'] }}">{{ c['user_email'] }}</a></td>
+            <td>{{ c['label'] or '—' }}</td>
+            <td class="mono">{{ c['tt_username'] }}</td>
+            <td class="muted">{{ c['created_at'][:10] }}</td>
+            <td style="text-align:right">
+              <form method="post" action="/admin/configs/{{ c['id'] }}/delete" onsubmit="return confirm('Удалить конфиг?')">
+                <button class="btn ghost sm">{{ icon('trash', 14) }}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}

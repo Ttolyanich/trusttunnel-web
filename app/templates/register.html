@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Регистрация — {{ brand }}{% endblock %}
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="logo">{{ icon('shield', 26) }} {{ brand }}</div>
+    <div class="card">
+      <h2 class="mb0">Регистрация</h2>
+      <p class="hint">Создайте аккаунт — сразу сможете выпустить конфиг.</p>
+      {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
+      <form method="post" action="/register">
+        <label>E-mail</label>
+        <input type="email" name="email" required autofocus>
+        <label>Пароль</label>
+        <input type="password" name="password" required minlength="6">
+        <button class="btn primary mt" style="width:100%">{{ icon('user', 16) }} Создать аккаунт</button>
+      </form>
+      <p class="hint mt" style="text-align:center">Уже есть аккаунт? <a href="/login">Войти</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

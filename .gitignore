@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Данные и секреты
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+.secret_key
+
+# Бинарь endpoint'а (скачивается в Docker-сборке)
+trusttunnel_endpoint
+*.tar.gz
+
+.DS_Store
+.idea/
+.vscode/

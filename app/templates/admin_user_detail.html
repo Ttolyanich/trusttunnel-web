@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ user['email'] }} — {{ brand }}{% endblock %}
+{% block body %}
+<div class="shell">
+  {% set active = 'users' %}
+  {% include '_admin_nav.html' %}
+  <main class="content">
+    <div class="topbar">
+      <div class="flex">
+        <button class="btn ghost hamburger" onclick="toggleSidebar()">{{ icon('menu', 18) }}</button>
+        <h1 class="mb0">{{ user['email'] }}</h1>
+        {% if user['status'] == 'active' %}<span class="pill ok">активен</span>
+        {% else %}<span class="pill warn">заблокирован</span>{% endif %}
+      </div>
+      <a class="btn ghost sm" href="/admin/users">← К списку</a>
+    </div>
+
+    {% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+    {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
+
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-title">{{ icon('user', 18) }} <h3 class="mb0">Данные</h3></div>
+        <form method="post" action="/admin/users/{{ user['id'] }}/email">
+          <label>E-mail</label>
+          <div class="row">
+            <input type="email" name="email" value="{{ user['email'] }}" required>
+            <button class="btn" style="flex:0 0 auto">Сохранить</button>
+          </div>
+        </form>
+        <form method="post" action="/admin/users/{{ user['id'] }}/password" class="mt">
+          <label>Новый пароль</label>
+          <div class="row">
+            <input type="password" name="password" placeholder="мин. 6" minlength="6" required>
+            <button class="btn" style="flex:0 0 auto">Сбросить</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-title">{{ icon('settings', 18) }} <h3 class="mb0">Действия</h3></div>
+        {% if user['status'] == 'active' %}
+        <form method="post" action="/admin/users/{{ user['id'] }}/status" class="mt">
+          <input type="hidden" name="status" value="blocked">
+          <button class="btn" style="width:100%">Заблокировать (снять креды с VPN)</button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/users/{{ user['id'] }}/status" class="mt">
+          <input type="hidden" name="status" value="active">
+          <button class="btn primary" style="width:100%">Разблокировать</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/admin/users/{{ user['id'] }}/delete" class="mt"
+              onsubmit="return confirm('Удалить пользователя и все его конфиги?')">
+          <button class="btn danger" style="width:100%">{{ icon('trash', 15) }} Удалить пользователя</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex between wrap" style="margin-bottom:12px">
+        <div class="card-title mb0">{{ icon('key', 18) }} <h3 class="mb0">Конфиги ({{ configs|length }})</h3></div>
+        <form method="post" action="/admin/users/{{ user['id'] }}/configs" class="flex">
+          <input type="text" name="label" placeholder="Название (необязательно)">
+          <button class="btn primary sm" style="flex:0 0 auto">{{ icon('plus', 15) }} Добавить</button>
+        </form>
+      </div>
+      {% if not configs %}
+        <p class="muted mb0">Конфигов нет.</p>
+      {% endif %}
+      {% for c in configs %}
+      <div class="card" style="box-shadow:none; background:var(--surface-2)">
+        <div class="flex between wrap" style="margin-bottom:10px">
+          <b>{{ c.label }}</b>
+          <form method="post" action="/admin/configs/{{ c.id }}/delete" onsubmit="return confirm('Удалить конфиг?')">
+            <button class="btn ghost sm">{{ icon('trash', 14) }}</button>
+          </form>
+        </div>
+        <div class="kv">
+          <div class="k">Логин</div><div class="v">{{ c.username }}</div>
+          <button class="btn ghost sm" onclick="copyText('{{ c.username }}', this)">{{ icon('copy', 14) }}</button>
+          <div class="k">Пароль</div><div class="v">{{ c.password }}</div>
+          <button class="btn ghost sm" onclick="copyText('{{ c.password }}', this)">{{ icon('copy', 14) }}</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Настройки — {{ brand }}{% endblock %}
+{% block body %}
+<div class="shell">
+  {% set active = 'settings' %}
+  {% include '_admin_nav.html' %}
+  <main class="content">
+    <div class="topbar">
+      <div class="flex">
+        <button class="btn ghost hamburger" onclick="toggleSidebar()">{{ icon('menu', 18) }}</button>
+        <h1 class="mb0">Настройки</h1>
+      </div>
+      <div class="flex">
+        {% if status.running %}<span class="pill ok">{{ icon('check', 13) }} endpoint работает</span>
+        {% else %}<span class="pill warn">endpoint остановлен</span>{% endif %}
+      </div>
+    </div>
+
+    {% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+    {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
+
+    <form method="post" action="/admin/settings">
+      <!-- Общее -->
+      <div class="card">
+        <div class="card-title">{{ icon('settings', 18) }} <h3 class="mb0">Общее</h3></div>
+        <div class="row">
+          <div>
+            <label>Название панели</label>
+            <input type="text" name="brand_name" value="{{ s.brand_name }}">
+          </div>
+          <div>
+            <label>Домен панели (за которым живёт эта админка/кабинет)</label>
+            <input type="text" name="panel_domain" value="{{ s.panel_domain }}" placeholder="panel.example.com">
+          </div>
+        </div>
+        <label class="check mt"><input type="checkbox" name="registration_enabled" {{ 'checked' if s.registration_enabled == '1' }}> Разрешить открытую регистрацию пользователей</label>
+      </div>
+
+      <!-- Сертификаты -->
+      <div class="card">
+        <div class="card-title">{{ icon('lock', 18) }} <h3 class="mb0">Домены и сертификаты подключения</h3></div>
+
+        <label>Режим сертификатов</label>
+        <select name="cert_mode" id="cert_mode" onchange="syncCert()">
+          <option value="external" {{ 'selected' if s.cert_mode == 'external' }}>За прокси / вручную — читать готовые сертификаты из каталога (автогенерация выкл.)</option>
+          <option value="letsencrypt" {{ 'selected' if s.cert_mode == 'letsencrypt' }}>Let's Encrypt — выпускать сертификаты автоматически</option>
+        </select>
+
+        <label class="check mt"><input type="checkbox" name="connection_hidden" id="connection_hidden" {{ 'checked' if s.connection_hidden == '1' }} onchange="syncCert()"> Прятать подключение за отдельным доменом (иначе используется домен панели)</label>
+
+        <div id="conn-domain-block">
+          <label>Домен подключения (что видит DPI как SNI)</label>
+          <input type="text" name="conn_domain" id="conn_domain" list="cert-domains" value="{{ s.conn_domain }}" placeholder="share.example.com">
+          <datalist id="cert-domains">
+            {% for d in cert_domains %}<option value="{{ d }}">{% endfor %}
+          </datalist>
+        </div>
+
+        <div id="external-block">
+          <p class="hint mt">
+            Каталог сертификатов: <code>{{ cert_dir }}/live/&lt;домен&gt;/</code> (монтируется в compose, обычно с хоста).
+            {% if cert_domains %}Найдены сертификаты — нажмите, чтобы выбрать домен подключения:{% else %}<b>Сертификаты не найдены.</b> Проверьте монтирование каталога.{% endif %}
+          </p>
+          <div class="flex wrap" style="gap:8px">
+            {% for d in cert_domains %}
+            <button type="button" class="btn sm" onclick="document.getElementById('conn_domain').value='{{ d }}'">{{ icon('lock', 13) }} {{ d }}</button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="le-block">
+          <label>E-mail для Let's Encrypt</label>
+          <input type="email" name="le_email" value="{{ s.le_email }}" placeholder="you@example.com">
+          <p class="hint">В этом режиме контейнер должен принимать входящие 80/443 (без внешнего прокси).</p>
+        </div>
+      </div>
+
+      <!-- Параметры подключения -->
+      <div class="card">
+        <div class="card-title">{{ icon('server', 18) }} <h3 class="mb0">Параметры подключения (что показываем клиенту)</h3></div>
+        <div class="row">
+          <div>
+            <label>Адрес сервера (host/IP)</label>
+            <input type="text" name="conn_address" value="{{ s.conn_address }}" placeholder="пусто → домен подключения">
+          </div>
+          <div>
+            <label>Порт</label>
+            <input type="number" name="conn_port" value="{{ s.conn_port }}">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Custom SNI (необязательно)</label>
+            <input type="text" name="conn_sni" value="{{ s.conn_sni }}">
+          </div>
+          <div>
+            <label>Протокол</label>
+            <select name="conn_protocol">
+              {% for p in ['QUIC', 'HTTP/2', 'HTTP/1.1'] %}
+              <option value="{{ p }}" {{ 'selected' if s.conn_protocol == p }}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <label class="mt">Показывать клиенту поля:</label>
+        <div class="flex wrap" style="gap:16px">
+          <label class="check"><input type="checkbox" name="show_address" {{ 'checked' if s.show_address == '1' }}> Адрес</label>
+          <label class="check"><input type="checkbox" name="show_port" {{ 'checked' if s.show_port == '1' }}> Порт</label>
+          <label class="check"><input type="checkbox" name="show_domain" {{ 'checked' if s.show_domain == '1' }}> Домен/SNI</label>
+          <label class="check"><input type="checkbox" name="show_sni" {{ 'checked' if s.show_sni == '1' }}> Custom SNI</label>
+          <label class="check"><input type="checkbox" name="show_protocol" {{ 'checked' if s.show_protocol == '1' }}> Протокол</label>
+          <label class="check"><input type="checkbox" name="show_username" {{ 'checked' if s.show_username == '1' }}> Логин</label>
+          <label class="check"><input type="checkbox" name="show_password" {{ 'checked' if s.show_password == '1' }}> Пароль</label>
+        </div>
+      </div>
+
+      <button class="btn primary">{{ icon('check', 16) }} Сохранить и применить</button>
+      <p class="hint">Сохранение перегенерирует конфиги endpoint'а и перезапустит его (смена порта/домена) либо мягко перечитает сертификат.</p>
+    </form>
+  </main>
+</div>
+<script>
+  function syncCert() {
+    var mode = document.getElementById('cert_mode').value;
+    var hidden = document.getElementById('connection_hidden').checked;
+    document.getElementById('external-block').style.display = (mode === 'external') ? '' : 'none';
+    document.getElementById('le-block').style.display = (mode === 'letsencrypt') ? '' : 'none';
+    document.getElementById('conn-domain-block').style.display = hidden ? '' : 'none';
+  }
+  syncCert();
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Вход — {{ brand }}{% endblock %}
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="logo">{{ icon('shield', 26) }} {{ brand }}</div>
+    <div class="card">
+      <h2 class="mb0">Вход в кабинет</h2>
+      <p class="hint">Войдите, чтобы создавать конфиги подключения.</p>
+      {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
+      <form method="post" action="/login">
+        <label>E-mail</label>
+        <input type="email" name="email" required autofocus>
+        <label>Пароль</label>
+        <input type="password" name="password" required>
+        <button class="btn primary mt" style="width:100%">{{ icon('lock', 16) }} Войти</button>
+      </form>
+      {% if registration_enabled %}
+      <p class="hint mt" style="text-align:center">Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
+      {% endif %}
+    </div>
+    <div style="text-align:center">
+      <button class="btn ghost sm" onclick="toggleTheme()">{{ icon('moon', 15) }} Сменить тему</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
