@@ -1,19 +1,19 @@
 """Сборка client.toml для официального trusttunnel_client.exe.
 
-Тот же контракт, что у trusttunnel-panel (форк, копия — не общий код). Веба
-одно-нодовая, поэтому берём параметры подключения из conninfo.connection_info.
+Формат — эталонный, сверен на живом setup_wizard v1.0.49 (не «по докам»).
+Полный шаблон с дефолтами официального визарда; подставляем только параметры
+подключения. Критично: excluded_routes исключают LAN — иначе локальная сеть
+пойдёт в туннель.
 
-Формат (репо TrustTunnelClient):
-    killswitch_enabled = false
-    [endpoint]
-    hostname = "<SNI>"; addresses = ["<host>:<port>"]
-    username/password; upstream_protocol = "http2"|"http3"
-    [listener.tun]
+Маппинг (важно):
+  hostname   = домен сертификата (TLS-валидация)   ← conn_domain / effective_domain
+  custom_sni = маскировочный SNI, если задан        ← conn_sni
+  addresses  = куда коннектиться                     ← conn_address:port
 """
 
 
-def _quote(v: str) -> str:
-    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+def _q(v: str) -> str:
+    return '"' + (v or "").replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _upstream_protocol(protocol: str) -> str:
@@ -23,24 +23,50 @@ def _upstream_protocol(protocol: str) -> str:
 
 def build_client_toml(info: dict, killswitch: bool = False) -> str:
     """info = conninfo.connection_info(cfg, settings)."""
-    sni = (info.get("sni") or "").strip() or (info.get("domain") or "").strip() \
-        or (info.get("address") or "").strip()
+    hostname = (info.get("domain") or "").strip() or (info.get("address") or "").strip()
     address = f"{info['address']}:{info['port']}"
-    lines = [
-        "# Сгенерировано trusttunnel-web. Не редактировать вручную.",
-        f"killswitch_enabled = {'true' if killswitch else 'false'}",
-        "killswitch_allow_ports = []",
-        "",
-        "[endpoint]",
-        f"hostname = {_quote(sni)}",
-        f"addresses = [{_quote(address)}]",
-        f"username = {_quote(info['username'])}",
-        f"password = {_quote(info['password'])}",
-        f"upstream_protocol = {_quote(_upstream_protocol(info.get('protocol', 'QUIC')))}",
-        "",
-        "[listener.tun]",
-        'included_routes = ["0.0.0.0/0", "2000::/3"]',
-        "excluded_routes = []",
-        "",
-    ]
-    return "\n".join(lines)
+    custom_sni = (info.get("sni") or "").strip()
+    return _TEMPLATE.format(
+        killswitch="true" if killswitch else "false",
+        hostname=_q(hostname),
+        addresses=_q(address),
+        custom_sni=_q(custom_sni),
+        username=_q(info["username"]),
+        password=_q(info["password"]),
+        upstream=_q(_upstream_protocol(info.get("protocol", "QUIC"))),
+    )
+
+
+# Полный эталонный шаблон (setup_wizard v1.0.49). Значения подставляются, всё
+# остальное — дефолты официального визарда.
+_TEMPLATE = """# Сгенерировано trusttunnel-web. Не редактировать вручную.
+loglevel = "info"
+vpn_mode = "general"
+killswitch_enabled = {killswitch}
+killswitch_allow_ports = []
+post_quantum_group_enabled = true
+exclusions = []
+
+[endpoint]
+hostname = {hostname}
+addresses = [{addresses}]
+custom_sni = {custom_sni}
+has_ipv6 = true
+username = {username}
+password = {password}
+client_random = ""
+skip_verification = false
+certificate = ""
+upstream_protocol = {upstream}
+anti_dpi = false
+dns_upstreams = []
+
+[listener]
+
+[listener.tun]
+bound_if = ""
+included_routes = ["0.0.0.0/0", "2000::/3"]
+excluded_routes = ["0.0.0.0/8", "10.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "224.0.0.0/3"]
+mtu_size = 1280
+change_system_dns = true
+"""
