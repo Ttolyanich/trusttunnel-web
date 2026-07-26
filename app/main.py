@@ -38,6 +38,8 @@ async def healthz():
 # Роутеры подключаем после создания app, чтобы избежать циклических импортов.
 from .routes_client import router as client_router  # noqa: E402
 from .routes_admin import router as admin_router     # noqa: E402
+from .routes_device import router as device_router   # noqa: E402
 
 app.include_router(admin_router)   # /admin*
+app.include_router(device_router)  # /connect + /portal/v1/device/* (конкретные пути)
 app.include_router(client_router)  # /* (регистрируем последним — самый общий префикс)

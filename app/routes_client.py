@@ -32,40 +32,47 @@ def index(request: Request):
     )
 
 
+def _safe_next(nxt: str | None) -> str:
+    """Только локальный путь: защита от open-redirect через ?next=."""
+    if nxt and nxt.startswith("/") and not nxt.startswith("//"):
+        return nxt
+    return "/"
+
+
 @router.get("/login", response_class=HTMLResponse)
-def login_form(request: Request):
+def login_form(request: Request, next: str = ""):
     return templates.TemplateResponse(
         request, "login.html",
         {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-         "error": None, "msg": request.query_params.get("msg")},
+         "error": None, "msg": request.query_params.get("msg"), "next": next},
     )
 
 
 @router.post("/login")
-def login(request: Request, email: str = Form(), password: str = Form()):
+def login(request: Request, email: str = Form(), password: str = Form(), next: str = Form("")):
     user = db.get_user_by_email(email)
     if user is None or not security.verify_password(password, user["password_hash"]):
         return templates.TemplateResponse(
             request, "login.html",
             {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-             "error": "Неверный e-mail или пароль", "msg": None},
+             "error": "Неверный e-mail или пароль", "msg": None, "next": next},
             status_code=401,
         )
     if user["status"] == "pending":
         return templates.TemplateResponse(
             request, "login.html",
             {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-             "error": "Ваш аккаунт ожидает подтверждения администратором", "msg": None},
+             "error": "Ваш аккаунт ожидает подтверждения администратором", "msg": None, "next": next},
             status_code=403,
         )
     elif user["status"] != "active":
         return templates.TemplateResponse(
             request, "login.html",
             {"brand": _brand(), "registration_enabled": db.get_setting("registration_enabled") == "1",
-             "error": "Аккаунт заблокирован", "msg": None},
+             "error": "Аккаунт заблокирован", "msg": None, "next": next},
             status_code=403,
         )
-    resp = RedirectResponse("/", 302)
+    resp = RedirectResponse(_safe_next(next), 302)
     resp.set_cookie(
         webauth.USER_COOKIE, security.create_session_token(str(user["id"]), "user"),
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,

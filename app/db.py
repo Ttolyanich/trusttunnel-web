@@ -78,8 +78,21 @@ CREATE TABLE IF NOT EXISTS email_tokens (
     expires_at TEXT NOT NULL
 );
 
+-- Устройства Windows-клиента: тот же контракт, что у панели, но одно-нодовый.
+CREATE TABLE IF NOT EXISTS app_devices (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    token_hash   TEXT NOT NULL UNIQUE,   -- sha256 от device-token
+    platform     TEXT NOT NULL DEFAULT 'windows',
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen_at TEXT,
+    revoked_at   TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_configs_user   ON configs(user_id);
 CREATE INDEX IF NOT EXISTS idx_configs_active ON configs(revoked_at);
+CREATE INDEX IF NOT EXISTS idx_devices_user   ON app_devices(user_id);
 """
 
 
@@ -107,6 +120,11 @@ def init_db() -> None:
         conn.executescript(_SCHEMA)
         try:
             conn.execute("ALTER TABLE admins ADD COLUMN recovery_email TEXT")
+        except sqlite3.OperationalError:
+            pass
+        # Конфиг может быть привязан к устройству приложения (NULL = ручной).
+        try:
+            conn.execute("ALTER TABLE configs ADD COLUMN device_id INTEGER")
         except sqlite3.OperationalError:
             pass
         # Настройки: добавляем только отсутствующие ключи (не затираем правки админа).
@@ -298,6 +316,75 @@ def active_credentials() -> list[dict]:
             "WHERE c.revoked_at IS NULL AND u.status = 'active'"
         ).fetchall()
     return [{"username": r["username"], "password": r["password"]} for r in rows]
+
+
+# ── Устройства приложения ────────────────────────────────────────────────────
+def create_device(user_id: int, name: str, token_hash: str, platform: str = "windows") -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO app_devices(user_id, name, token_hash, platform) VALUES (?, ?, ?, ?)",
+            (user_id, name, token_hash, platform),
+        )
+        return cur.lastrowid
+
+
+def get_device_by_token_hash(token_hash: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM app_devices WHERE token_hash = ?", (token_hash,)
+        ).fetchone()
+
+
+def touch_device(device_id: int) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE app_devices SET last_seen_at = datetime('now') WHERE id = ?", (device_id,)
+        )
+
+
+def list_user_devices(user_id: int) -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM app_devices WHERE user_id = ? ORDER BY id DESC", (user_id,)
+        ).fetchall()
+
+
+def get_device_config(device_id: int) -> sqlite3.Row | None:
+    """Активный конфиг устройства (одно-нодовая веба — один конфиг на устройство)."""
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM configs WHERE device_id = ? AND revoked_at IS NULL "
+            "ORDER BY id DESC LIMIT 1",
+            (device_id,),
+        ).fetchone()
+
+
+def create_device_config(
+    user_id: int, device_id: int, tt_username: str, tt_password: str, label: str | None
+) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO configs(user_id, device_id, tt_username, tt_password, label) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, device_id, tt_username, tt_password, label),
+        )
+        return cur.lastrowid
+
+
+def revoke_device(device_id: int) -> int:
+    """Отозвать устройство и снять его конфиги (credentials.toml пересоберётся)."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE app_devices SET revoked_at = datetime('now') "
+            "WHERE id = ? AND revoked_at IS NULL",
+            (device_id,),
+        )
+        cur = conn.execute(
+            "UPDATE configs SET revoked_at = datetime('now') "
+            "WHERE device_id = ? AND revoked_at IS NULL",
+            (device_id,),
+        )
+        return cur.rowcount
 
 
 def create_email_token(token: str, user_id: int, purpose: str, expires_at: str) -> None:

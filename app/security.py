@@ -26,6 +26,13 @@ def new_token(nbytes: int = 24) -> str:
     return secrets.token_urlsafe(nbytes)
 
 
+def hash_api_token(raw: str) -> str:
+    """SHA-256 для высокоэнтропийных токенов устройств (прямой поиск по колонке)."""
+    import hashlib
+
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def create_session_token(subject: str, kind: str) -> str:
     """kind: 'admin' | 'user' — разделяет области авторизации."""
     now = datetime.now(timezone.utc)
