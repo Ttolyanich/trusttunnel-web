@@ -66,6 +66,22 @@ def connect_page(request: Request, redirect_uri: str = "", state: str = "", name
     )
 
 
+@router.get("/connect/done", response_class=HTMLResponse)
+def connect_done():
+    """Куда приложение уводит браузер после успешного входа — чтобы не оставлять
+    loopback-URL с токеном в адресной строке. Публичная, без данных."""
+    return HTMLResponse(
+        "<!doctype html><html lang=ru><head><meta charset=utf-8>"
+        "<title>Готово</title><style>body{font-family:system-ui;background:#0f1115;"
+        "color:#e6e8ec;display:flex;height:100vh;margin:0;align-items:center;"
+        "justify-content:center;text-align:center}</style></head><body><div>"
+        "<h2>Устройство подключено</h2>"
+        "<p>Можно закрыть эту вкладку и вернуться в приложение TrustTunnel.</p>"
+        "<script>setTimeout(function(){try{window.close()}catch(e){}},800)</script>"
+        "</div></body></html>"
+    )
+
+
 @router.post("/connect/approve")
 def connect_approve(
     request: Request,
