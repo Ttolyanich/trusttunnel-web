@@ -3,8 +3,8 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import (FileResponse, HTMLResponse, PlainTextResponse,
-                               RedirectResponse, Response)
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               PlainTextResponse, RedirectResponse, Response)
 
 from . import conninfo, db, endpoint, mailer, qr, security, webauth
 from .templating import templates
@@ -90,6 +90,39 @@ def device_revoke(request: Request, device_id: int):
     db.revoke_device(device_id)
     endpoint.manager.apply_credentials()
     return RedirectResponse("/", 302)
+
+
+@router.get("/.well-known/assetlinks.json")
+def assetlinks():
+    """Подтверждает Android, что ссылки /e на этом домене принадлежат приложению.
+
+    Без этого файла система не «верифицирует» ссылку и показывает выбор приложения —
+    работать будет, но менее гладко. Отпечаток подписи держим в настройках: при
+    выпуске релизного ключа его меняют без пересборки образа.
+
+    Формат отпечатка — как у Google: HEX-байты через двоеточие в верхнем регистре.
+    """
+    fp = (db.get_setting("android_cert_sha256") or "").strip()
+    pkg = (db.get_setting("android_package") or "kz.servername.trusttunnel").strip()
+    if not fp:
+        return JSONResponse([], status_code=404)
+
+    prints = []
+    for item in fp.replace(",", " ").split():
+        raw = item.replace(":", "").strip()
+        if len(raw) == 64:
+            prints.append(":".join(raw[i:i + 2] for i in range(0, 64, 2)).upper())
+    if not prints:
+        return JSONResponse([], status_code=404)
+
+    return JSONResponse([{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": pkg,
+            "sha256_cert_fingerprints": prints,
+        },
+    }])
 
 
 @router.get("/e", response_class=HTMLResponse)
