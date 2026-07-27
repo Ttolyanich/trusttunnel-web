@@ -24,13 +24,6 @@
     Код истёк — сгенерируйте новый.
   </p>
 
-  <!-- Кабинет открыт на самом телефоне — камера не нужна: ссылка откроет
-       приложение и привяжет устройство. Код в ней лежит во фрагменте и на сервер
-       не уходит. -->
-  <p style="margin:18px 0 0;">
-    <a href="{{ link }}" class="btn">Открыть в приложении на этом телефоне</a>
-  </p>
-
   <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;">
     <form method="post" action="/devices/enroll-qr">
       <button type="submit" class="btn ghost">Новый код</button>
@@ -39,7 +32,7 @@
   </div>
 
   <p class="mut" style="margin:16px 0 0;font-size:12px;">
-    Камера не работает? Откройте эту страницу на самом телефоне и нажмите кнопку выше.
+    Устройство подключается только сканированием — откройте эту страницу на компьютере.
   </p>
 </div>
 

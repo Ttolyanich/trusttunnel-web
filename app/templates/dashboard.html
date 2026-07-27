@@ -6,19 +6,36 @@
 
 <div class="card" style="background: linear-gradient(135deg, rgba(79,110,247,0.07), rgba(124,92,255,0.07)); border-color: rgba(79,110,247,0.15);">
   <h2 style="margin-bottom:8px;">{{ icon('download') }} Скачать приложение</h2>
-  {% if win_app %}
+  {% if win_app or android_app %}
   <p class="mut" style="margin-top:-6px;margin-bottom:14px;font-size:13.5px;line-height:1.45;">
-    Приложение для Windows подключается автоматически — вход через браузер, конфиг настраивать вручную не нужно.
+    Наше приложение подключается само: на компьютере — вход через браузер,
+    на телефоне — сканирование QR из раздела «Мои устройства». Настройки вписывать не нужно.
   </p>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    {% if win_app %}
     <a href="/download/windows" class="btn" style="font-weight:600;">{{ icon('monitor', 16) }} <span>Скачать для Windows</span></a>
-    <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>iOS</span></a>
-    <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Android</span></a>
+    {% endif %}
+    {% if android_app %}
+    <a href="/download/android" class="btn" style="font-weight:600;">{{ icon('smartphone', 16) }} <span>Скачать для Android</span></a>
+    {% endif %}
   </div>
-  <p class="mut" style="margin:12px 0 0;font-size:12px;">
-    На iOS/Android впишите настройки из раздела «Мои конфиги» ниже.
-    Для macOS/Linux — <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener">сторонний клиент</a>.
+  {% if android_sha256 %}
+  <!-- APK ставится мимо магазина: сверка суммы — единственный способ убедиться,
+       что скачался именно наш файл. -->
+  <p class="mut" style="margin:10px 0 0;font-size:11.5px;word-break:break-all;">
+    SHA-256 для Android: <code style="font-size:11px;">{{ android_sha256 }}</code>
   </p>
+  {% endif %}
+
+  <p class="mut" style="margin:14px 0 6px;font-size:12px;">
+    Альтернатива — официальные приложения TrustTunnel. В них настройки вводятся
+    вручную из раздела «Мои конфиги» ниже.
+  </p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Android (оригинал)</span></a>
+    <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>iOS</span></a>
+    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>macOS / Linux</span></a>
+  </div>
   {% else %}
   <p class="mut" style="margin-top:-6px;margin-bottom:18px;font-size:13.5px;line-height:1.4;">
     Установите приложение TrustTunnel на устройство, затем впишите настройки из раздела «Мои конфиги» ниже.

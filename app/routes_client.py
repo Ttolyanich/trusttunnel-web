@@ -15,6 +15,31 @@ router = APIRouter()
 # (на хосте — /opt/trusttunnel-web/data/downloads/). Обновляется заливкой файла,
 # без пересборки контейнера.
 WIN_INSTALLER = os.environ.get("WIN_INSTALLER", "/data/downloads/TrustTunnel-Setup.exe")
+ANDROID_APK = os.environ.get("ANDROID_APK", "/data/downloads/TrustTunnel.apk")
+
+# Контрольная сумма APK: телефон ставится мимо магазина, и возможность сверить
+# файл — единственный способ убедиться, что скачалось именно наше. Считаем один
+# раз на файл (ключ — размер и время правки), иначе каждый показ кабинета хешировал
+# бы двадцать мегабайт.
+_sha_cache: dict[tuple, str] = {}
+
+
+def _sha256(path: str) -> str | None:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    key = (path, st.st_size, st.st_mtime_ns)
+    if key not in _sha_cache:
+        import hashlib
+
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        _sha_cache.clear()
+        _sha_cache[key] = h.hexdigest()
+    return _sha_cache[key]
 
 
 def _brand() -> str:
@@ -36,6 +61,8 @@ def index(request: Request):
             "devices": db.list_user_devices(user["id"]),
             "endpoint_ready": bool(endpoint.effective_domain(settings)),
             "win_app": os.path.exists(WIN_INSTALLER),
+            "android_app": os.path.exists(ANDROID_APK),
+            "android_sha256": _sha256(ANDROID_APK),
             "error": request.query_params.get("error"),
         },
     )
@@ -145,6 +172,21 @@ def download_windows():
     return FileResponse(
         WIN_INSTALLER, media_type="application/octet-stream",
         filename="TrustTunnel-Setup.exe",
+    )
+
+
+@router.get("/download/android")
+def download_android():
+    """Отдать APK (лежит в томе /data, как и установщик Windows).
+
+    Тип application/vnd.android.package-archive — чтобы телефон предложил
+    установку, а не открыл файл как неизвестный.
+    """
+    if not os.path.exists(ANDROID_APK):
+        raise HTTPException(404, "Приложение ещё не загружено администратором")
+    return FileResponse(
+        ANDROID_APK, media_type="application/vnd.android.package-archive",
+        filename="TrustTunnel.apk",
     )
 
 
