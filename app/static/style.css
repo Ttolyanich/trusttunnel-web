@@ -188,7 +188,7 @@ button, .btn {
   color: #fff; border: 0; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-size: 14px;
   font-weight: 600; font-family: inherit; box-shadow: 0 4px 12px rgba(79, 110, 247, 0.15); transition: all 0.2s ease;
 }
-button:hover, .btn:hover { background: var(--acc-hover); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 110, 247, 0.25); }
+button:hover, .btn:hover { background: var(--acc-hover); color: #fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 110, 247, 0.25); }
 button:active, .btn:active { transform: translateY(0); }
 a.btn:hover { text-decoration: none; }
 button.ghost, .btn.ghost { background: var(--card); border: 1px solid var(--line); color: var(--fg); box-shadow: none; }
