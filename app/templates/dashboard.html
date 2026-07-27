@@ -5,7 +5,21 @@
 {% if error %}<div class="alert warn">{{ icon('zap') }} {{ error }}</div>{% endif %}
 
 <div class="card" style="background: linear-gradient(135deg, rgba(79,110,247,0.07), rgba(124,92,255,0.07)); border-color: rgba(79,110,247,0.15);">
-  <h2 style="margin-bottom:8px;">{{ icon('download') }} Скачать приложение TrustTunnel</h2>
+  <h2 style="margin-bottom:8px;">{{ icon('download') }} Скачать приложение</h2>
+  {% if win_app %}
+  <p class="mut" style="margin-top:-6px;margin-bottom:14px;font-size:13.5px;line-height:1.45;">
+    Приложение для Windows подключается автоматически — вход через браузер, конфиг настраивать вручную не нужно.
+  </p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    <a href="/download/windows" class="btn" style="font-weight:600;">{{ icon('monitor', 16) }} <span>Скачать для Windows</span></a>
+    <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>iOS</span></a>
+    <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Android</span></a>
+  </div>
+  <p class="mut" style="margin:12px 0 0;font-size:12px;">
+    На iOS/Android впишите настройки из раздела «Мои конфиги» ниже.
+    Для macOS/Linux — <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener">сторонний клиент</a>.
+  </p>
+  {% else %}
   <p class="mut" style="margin-top:-6px;margin-bottom:18px;font-size:13.5px;line-height:1.4;">
     Установите приложение TrustTunnel на устройство, затем впишите настройки из раздела «Мои конфиги» ниже.
   </p>
@@ -14,6 +28,7 @@
     <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Google Play (Android)</span></a>
     <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>Windows / macOS / Linux</span></a>
   </div>
+  {% endif %}
 </div>
 
 {% if not endpoint_ready %}

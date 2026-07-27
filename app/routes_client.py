@@ -1,13 +1,20 @@
 """Клиентская часть: /login, /register, /dashboard, конфиги, сброс пароля, скачивание."""
+import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import (FileResponse, HTMLResponse, PlainTextResponse,
+                               RedirectResponse, Response)
 
 from . import conninfo, db, endpoint, mailer, security, webauth
 from .templating import templates
 
 router = APIRouter()
+
+# Установщик Windows-приложения кладётся в персистентный том /data
+# (на хосте — /opt/trusttunnel-web/data/downloads/). Обновляется заливкой файла,
+# без пересборки контейнера.
+WIN_INSTALLER = os.environ.get("WIN_INSTALLER", "/data/downloads/TrustTunnel-Setup.exe")
 
 
 def _brand() -> str:
@@ -27,8 +34,20 @@ def index(request: Request):
         {
             "brand": _brand(), "user": user, "configs": configs,
             "endpoint_ready": bool(endpoint.effective_domain(settings)),
+            "win_app": os.path.exists(WIN_INSTALLER),
             "error": request.query_params.get("error"),
         },
+    )
+
+
+@router.get("/download/windows")
+def download_windows():
+    """Отдать установщик Windows-приложения (лежит в томе /data)."""
+    if not os.path.exists(WIN_INSTALLER):
+        raise HTTPException(404, "Установщик ещё не загружен администратором")
+    return FileResponse(
+        WIN_INSTALLER, media_type="application/octet-stream",
+        filename="TrustTunnel-Setup.exe",
     )
 
 
