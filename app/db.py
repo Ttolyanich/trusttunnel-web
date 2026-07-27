@@ -90,9 +90,22 @@ CREATE TABLE IF NOT EXISTS app_devices (
     revoked_at   TEXT
 );
 
+-- Одноразовые коды привязки устройства по QR. Сам код не храним — только sha256,
+-- как и device-токены: утечка базы не даёт привязать устройство.
+CREATE TABLE IF NOT EXISTS enroll_codes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash  TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    used_at    TEXT,
+    device_id  INTEGER REFERENCES app_devices(id) ON DELETE SET NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_configs_user   ON configs(user_id);
 CREATE INDEX IF NOT EXISTS idx_configs_active ON configs(revoked_at);
 CREATE INDEX IF NOT EXISTS idx_devices_user   ON app_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_enroll_expires ON enroll_codes(expires_at);
 """
 
 
@@ -328,6 +341,13 @@ def create_device(user_id: int, name: str, token_hash: str, platform: str = "win
         return cur.lastrowid
 
 
+def get_device(device_id: int) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM app_devices WHERE id = ?", (device_id,)
+        ).fetchone()
+
+
 def get_device_by_token_hash(token_hash: str) -> sqlite3.Row | None:
     with connect() as conn:
         return conn.execute(
@@ -369,6 +389,57 @@ def create_device_config(
             (user_id, device_id, tt_username, tt_password, label),
         )
         return cur.lastrowid
+
+
+def create_enroll_code(user_id: int, code_hash: str, ttl_seconds: int) -> int:
+    """Код привязки устройства (QR). Живёт минуты и срабатывает один раз."""
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO enroll_codes(user_id, code_hash, expires_at) "
+            "VALUES (?, ?, datetime('now', ?))",
+            # Знак форматируем через :+d — иначе отрицательный TTL дал бы
+            # "+-10 seconds", а это недопустимый модификатор: datetime() вернёт
+            # NULL и упадёт NOT NULL.
+            (user_id, code_hash, f"{int(ttl_seconds):+d} seconds"),
+        )
+        return cur.lastrowid
+
+
+def consume_enroll_code(code_hash: str) -> sqlite3.Row | None:
+    """Атомарно гасит код и возвращает его строку.
+
+    Пометка used_at и проверка «не использован / не истёк» идут ОДНИМ UPDATE:
+    иначе два одновременных запроса с одним кодом могли бы оба пройти проверку
+    и привязать два устройства.
+    """
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE enroll_codes SET used_at = datetime('now') "
+            "WHERE code_hash = ? AND used_at IS NULL AND expires_at > datetime('now')",
+            (code_hash,),
+        )
+        if cur.rowcount == 0:
+            return None
+        return conn.execute(
+            "SELECT * FROM enroll_codes WHERE code_hash = ?", (code_hash,)
+        ).fetchone()
+
+
+def attach_enroll_device(code_hash: str, device_id: int) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE enroll_codes SET device_id = ? WHERE code_hash = ?",
+            (device_id, code_hash),
+        )
+
+
+def purge_expired_enroll_codes() -> None:
+    """Чистим отработавшее — таблица не должна расти бесконечно."""
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM enroll_codes "
+            "WHERE expires_at < datetime('now', '-1 day') OR used_at < datetime('now', '-1 day')"
+        )
 
 
 def revoke_device(device_id: int) -> int:

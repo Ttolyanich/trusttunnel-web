@@ -1,0 +1,53 @@
+{% extends "base_client.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Подключение устройства{% endblock %}
+{% block body %}
+
+<div class="card" style="text-align:center;">
+  <h2 style="margin-bottom:8px;">{{ icon('smartphone') }} Наведите камеру приложения</h2>
+  <p class="mut" style="margin-top:-6px;margin-bottom:18px;font-size:13.5px;line-height:1.45;">
+    В приложении TrustTunnel на телефоне выберите «Подключить по QR».
+    Код одноразовый и действует <span id="left">{{ ttl }}</span> сек.
+  </p>
+
+  <div id="qr" style="display:inline-block;background:#fff;padding:14px;border-radius:14px;line-height:0;max-width:100%;">
+    {{ qr_svg|safe }}
+  </div>
+
+  <p id="expired" class="alert warn" style="display:none;margin:18px auto 0;max-width:420px;">
+    Код истёк — сгенерируйте новый.
+  </p>
+
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;">
+    <form method="post" action="/devices/enroll-qr">
+      <button type="submit" class="btn ghost">Новый код</button>
+    </form>
+    <a href="/" class="btn ghost">Готово</a>
+  </div>
+
+  <p class="mut" style="margin:16px 0 0;font-size:12px;">
+    Камера не работает? В приложении есть запасной путь — «Войти через браузер».
+  </p>
+</div>
+
+<script>
+  // Обратный отсчёт: по истечении прячем код, чтобы им уже не воспользовались.
+  (function () {
+    var left = {{ ttl }};
+    var el = document.getElementById('left');
+    var qr = document.getElementById('qr');
+    var expired = document.getElementById('expired');
+    var t = setInterval(function () {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(t);
+        qr.style.display = 'none';
+        expired.style.display = '';
+        el.textContent = '0';
+        return;
+      }
+      el.textContent = left;
+    }, 1000);
+  })();
+</script>
+{% endblock %}

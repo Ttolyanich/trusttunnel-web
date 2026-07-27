@@ -36,6 +36,37 @@
 {% endif %}
 
 <div class="card">
+  <h2>{{ icon('smartphone') }} Мои устройства</h2>
+  <p class="mut" style="margin-top:-6px;margin-bottom:14px;font-size:13.5px;line-height:1.45;">
+    Приложение подключается само — ничего вписывать вручную не нужно.
+    Откройте в приложении «Подключить по QR» и наведите камеру на код.
+  </p>
+  <form method="post" action="/devices/enroll-qr" style="margin-bottom:14px;">
+    <button type="submit" class="btn">{{ icon('plus', 16) }} <span>Подключить устройство по QR</span></button>
+  </form>
+
+  {% for d in devices %}
+  <div class="kv" style="align-items:center;">
+    <span class="kv-name" style="min-width:0;">
+      {{ d.name }}
+      <span class="mut" style="font-size:12px;">· {{ d.platform }}</span>
+    </span>
+    {% if d.revoked_at %}
+    <code style="opacity:.6;">отозвано</code>
+    {% else %}
+    <code>{% if d.last_seen_at %}активно {{ d.last_seen_at }}{% else %}ещё не выходило на связь{% endif %}</code>
+    <form method="post" action="/devices/{{ d.id }}/revoke"
+          onsubmit="return confirm('Отозвать устройство «{{ d.name }}»? Его VPN перестанет работать.');">
+      <button type="submit" class="ghost">Отозвать</button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="mut" style="margin:0;">Устройств пока нет.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
   <h2>{{ icon('plus') }} Новый конфиг</h2>
   <form method="post" action="/configs" class="row">
     <div class="field grow"><label>Метка устройства</label><input name="label" placeholder="Телефон, ноутбук…"></div>

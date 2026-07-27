@@ -6,7 +6,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import (FileResponse, HTMLResponse, PlainTextResponse,
                                RedirectResponse, Response)
 
-from . import conninfo, db, endpoint, mailer, security, webauth
+from . import conninfo, db, endpoint, mailer, qr, security, webauth
 from .templating import templates
 
 router = APIRouter()
@@ -33,10 +33,72 @@ def index(request: Request):
         request, "dashboard.html",
         {
             "brand": _brand(), "user": user, "configs": configs,
+            "devices": db.list_user_devices(user["id"]),
             "endpoint_ready": bool(endpoint.effective_domain(settings)),
             "win_app": os.path.exists(WIN_INSTALLER),
             "error": request.query_params.get("error"),
         },
+    )
+
+
+# ── привязка устройства по QR ────────────────────────────────────────────────
+
+ENROLL_TTL_SECONDS = 180
+
+
+@router.post("/devices/enroll-qr", response_class=HTMLResponse)
+def device_enroll_qr(request: Request):
+    """Выдаёт одноразовый код привязки и рисует его QR прямо в странице.
+
+    Код показывается ровно один раз (в базе только его sha256) и живёт минуты.
+    В QR кладём ссылку на этот же сервер: приложение берёт из неё и адрес панели,
+    и код — на телефоне ничего вводить руками не нужно.
+    """
+    user = webauth.current_user(request)
+    if not user:
+        return RedirectResponse("/login", 302)
+
+    db.purge_expired_enroll_codes()
+    raw = security.new_token(24)
+    db.create_enroll_code(user["id"], security.hash_api_token(raw), ENROLL_TTL_SECONDS)
+
+    base = str(request.base_url).rstrip("/")
+    # Код во фрагменте: он не попадает в логи сервера и в Referer, если ссылку
+    # всё же откроют браузером.
+    link = f"{base}/e#{raw}"
+    return templates.TemplateResponse(
+        request, "device_qr.html",
+        {
+            "brand": _brand(), "user": user,
+            "qr_svg": qr.svg(link),
+            "link": link,
+            "ttl": ENROLL_TTL_SECONDS,
+        },
+    )
+
+
+@router.post("/devices/{device_id}/revoke")
+def device_revoke(request: Request, device_id: int):
+    user = webauth.current_user(request)
+    if not user:
+        return RedirectResponse("/login", 302)
+    device = db.get_device(device_id)
+    if device is None or device["user_id"] != user["id"]:
+        return RedirectResponse("/?error=Устройство+не+найдено", 302)
+    db.revoke_device(device_id)
+    endpoint.manager.apply_credentials()
+    return RedirectResponse("/", 302)
+
+
+@router.get("/e", response_class=HTMLResponse)
+def enroll_landing(request: Request):
+    """Куда попадает тот, кто открыл QR-ссылку браузером, а не приложением.
+
+    Сам код лежит во фрагменте URL и до сервера не доходит — страница только
+    объясняет, что делать.
+    """
+    return templates.TemplateResponse(
+        request, "enroll_landing.html", {"brand": _brand()},
     )
 
 

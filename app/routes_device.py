@@ -119,6 +119,42 @@ def device_locations(x_device_token: str | None = Header(default=None)):
     return [{"group_id": 1, "slug": "default", "name": db.get_setting("brand_name", "Основной сервер")}]
 
 
+class EnrollIn(BaseModel):
+    code: str
+    name: str = "Телефон"
+    platform: str = "android"
+
+
+@router.post("/portal/v1/device/enroll")
+def device_enroll(data: EnrollIn):
+    """Привязка устройства по одноразовому коду из QR.
+
+    Токен в QR не кладём: код одноразовый и живёт минуты, поэтому снимок чужого
+    экрана даёт лишь узкое окно, а привязанное устройство видно в кабинете и
+    отзывается одной кнопкой.
+    """
+    code = (data.code or "").strip()
+    if not code:
+        raise HTTPException(400, "Пустой код")
+
+    row = db.consume_enroll_code(security.hash_api_token(code))
+    if row is None:
+        # Не разделяем «нет такого» / «истёк» / «уже использован» — незачем
+        # подсказывать подбирающему, насколько он близок.
+        raise HTTPException(400, "Код недействителен или истёк")
+
+    user = db.get_user(row["user_id"])
+    if user is None or user["status"] != "active":
+        raise HTTPException(403, "Аккаунт заблокирован или ожидает подтверждения")
+
+    raw = security.new_token(32)
+    name = (data.name or "").strip()[:64] or "Телефон"
+    platform = (data.platform or "").strip()[:16] or "android"
+    device_id = db.create_device(user["id"], name, security.hash_api_token(raw), platform)
+    db.attach_enroll_device(row["code_hash"], device_id)
+    return {"token": raw, "device_id": device_id, "user_email": user["email"]}
+
+
 class ConnectIn(BaseModel):
     group_id: int = 1
     killswitch: bool = False
