@@ -362,11 +362,15 @@ def touch_device(device_id: int) -> None:
         )
 
 
-def list_user_devices(user_id: int) -> list[sqlite3.Row]:
+def list_user_devices(user_id: int, include_revoked: bool = False) -> list[sqlite3.Row]:
+    """Устройства пользователя. Отозванные по умолчанию скрыты: в кабинете они
+    только копятся мусором, а доступа уже не дают (строки храним для истории)."""
+    sql = "SELECT * FROM app_devices WHERE user_id = ?"
+    if not include_revoked:
+        sql += " AND revoked_at IS NULL"
+    sql += " ORDER BY id DESC"
     with connect() as conn:
-        return conn.execute(
-            "SELECT * FROM app_devices WHERE user_id = ? ORDER BY id DESC", (user_id,)
-        ).fetchall()
+        return conn.execute(sql, (user_id,)).fetchall()
 
 
 def get_device_config(device_id: int) -> sqlite3.Row | None:

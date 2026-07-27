@@ -10,7 +10,13 @@
     Код одноразовый и действует <span id="left">{{ ttl }}</span> сек.
   </p>
 
-  <div id="qr" style="display:inline-block;background:#fff;padding:14px;border-radius:14px;line-height:0;max-width:100%;">
+  <!-- Библиотека отдаёт SVG с размером в мм — он выходит мелким. Растягиваем
+       через CSS: код должен уверенно ловиться камерой телефона с руки. -->
+  <style>
+    #qr svg { width: 100%; height: auto; display: block; }
+  </style>
+  <div id="qr" style="display:inline-block;background:#fff;padding:16px;border-radius:14px;
+              line-height:0;width:min(78vw,340px);">
     {{ qr_svg|safe }}
   </div>
 

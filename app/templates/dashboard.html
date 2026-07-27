@@ -51,15 +51,11 @@
       {{ d.name }}
       <span class="mut" style="font-size:12px;">· {{ d.platform }}</span>
     </span>
-    {% if d.revoked_at %}
-    <code style="opacity:.6;">отозвано</code>
-    {% else %}
     <code>{% if d.last_seen_at %}активно {{ d.last_seen_at }}{% else %}ещё не выходило на связь{% endif %}</code>
     <form method="post" action="/devices/{{ d.id }}/revoke"
           onsubmit="return confirm('Отозвать устройство «{{ d.name }}»? Его VPN перестанет работать.');">
       <button type="submit" class="ghost">Отозвать</button>
     </form>
-    {% endif %}
   </div>
   {% else %}
   <p class="mut" style="margin:0;">Устройств пока нет.</p>

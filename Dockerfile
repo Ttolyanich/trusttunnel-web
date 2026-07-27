@@ -39,4 +39,8 @@ ENV DATA_DIR=/data \
 EXPOSE 8000 8443
 VOLUME ["/data"]
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers: контейнер стоит за обратным прокси, и без учёта
+# X-Forwarded-Proto request.base_url отдаёт http-схему внутреннего порта —
+# сгенерированные ссылки упирались бы в редирект.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]

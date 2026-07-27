@@ -62,7 +62,9 @@ def device_enroll_qr(request: Request):
     raw = security.new_token(24)
     db.create_enroll_code(user["id"], security.hash_api_token(raw), ENROLL_TTL_SECONDS)
 
-    base = str(request.base_url).rstrip("/")
+    # portal_url, как и в письмах: за обратным прокси request.base_url отдаёт
+    # http-схему внутреннего порта, и приложение упиралось бы в редирект (301).
+    base = (db.get_setting("portal_url") or str(request.base_url)).rstrip("/")
     # Код во фрагменте: он не попадает в логи сервера и в Referer, если ссылку
     # всё же откроют браузером.
     link = f"{base}/e#{raw}"
