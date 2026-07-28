@@ -64,14 +64,18 @@ docker compose up --build -d
 ## Управление администраторами
 
 Управлять администраторами можно двумя способами:
-1. **В веб-панели**: в разделе **«Админы»** (`/admin/admins`) суперадминистратор может добавлять новые аккаунты, изменять логин, пароль и почту восстановления или удалять админов.
-2. **Через CLI-скрипт**: если панель остановлена или вам нужно сбросить пароль из терминала, используйте встроенный скрипт на хост-машине:
+
+1. **В веб-панели** — раздел **«Админы»** (`/admin/admins`): добавить аккаунт,
+   сменить логин, пароль или почту восстановления, удалить админа (кроме себя).
+   Роль одна, отдельного «суперадмина» нет.
+2. **Через CLI-скрипт** — когда в панель уже не войти. Скрипт лежит в образе,
+   запускается внутри контейнера:
    ```bash
    # Показать список всех администраторов
-   /opt/trusttunnel-web/.venv/bin/python scripts/manage_admins.py --db /opt/trusttunnel-web/data/trusttunnel-web.db list
+   docker exec trusttunnel-web python scripts/manage_admins.py --db /data/trusttunnel-web.db list
 
    # Создать администратора (логин, пароль, опционально почта восстановления)
-   /opt/trusttunnel-web/.venv/bin/python scripts/manage_admins.py --db /opt/trusttunnel-web/data/trusttunnel-web.db create admin_login "пароль" --recovery-email "admin@example.com"
+   docker exec trusttunnel-web python scripts/manage_admins.py --db /data/trusttunnel-web.db create admin_login "пароль" --recovery-email "admin@example.com"
    ```
 
 ## Сертификаты: два режима

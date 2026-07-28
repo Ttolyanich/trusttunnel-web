@@ -30,6 +30,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+# Утилиты обслуживания (сброс пароля админа) — их запускают через docker exec,
+# когда в панель уже не войти. Без них документированный способ не работает.
+COPY scripts ./scripts
 
 ENV DATA_DIR=/data \
     ENDPOINT_BIN=/opt/trusttunnel/trusttunnel_endpoint \
