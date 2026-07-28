@@ -1,6 +1,7 @@
 """Клиентская часть: /login, /register, /dashboard, конфиги, сброс пароля, скачивание."""
 import os
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
@@ -16,6 +17,9 @@ router = APIRouter()
 # без пересборки контейнера.
 WIN_INSTALLER = os.environ.get("WIN_INSTALLER", "/data/downloads/TrustTunnel-Setup.exe")
 ANDROID_APK = os.environ.get("ANDROID_APK", "/data/downloads/TrustTunnel.apk")
+# Отдельная сборка под armv7: старые телефоны. Ядро туннеля — статический бинарь
+# под конкретную архитектуру, одной сборкой обе не покрыть без лишних мегабайт.
+ANDROID_APK_V7 = os.environ.get("ANDROID_APK_V7", "/data/downloads/TrustTunnel-armv7.apk")
 
 # Контрольная сумма APK: телефон ставится мимо магазина, и возможность сверить
 # файл — единственный способ убедиться, что скачалось именно наше. Считаем один
@@ -63,6 +67,7 @@ def index(request: Request):
             "win_app": os.path.exists(WIN_INSTALLER),
             "android_app": os.path.exists(ANDROID_APK),
             "android_sha256": _sha256(ANDROID_APK),
+            "android_v7": os.path.exists(ANDROID_APK_V7),
             "error": request.query_params.get("error"),
         },
     )
@@ -165,13 +170,21 @@ def enroll_landing(request: Request):
 
 
 @router.get("/download/windows")
-def download_windows():
-    """Отдать установщик Windows-приложения (лежит в томе /data)."""
+def download_windows(request: Request):
+    """Отдать установщик Windows-приложения (лежит в томе /data).
+
+    Имя файла — TrustTunnel-Setup_<хост>.exe: установщик достаёт из него адрес и
+    кладёт рядом с приложением, чтобы скачавшему не пришлось вписывать адрес
+    руками. Схему в имя не положить («:» и «/» в именах файлов запрещены), поэтому
+    передаём только хост, а «https://» дописывает установщик.
+    """
     if not os.path.exists(WIN_INSTALLER):
         raise HTTPException(404, "Установщик ещё не загружен администратором")
+    base = (db.get_setting("portal_url") or str(request.base_url)).rstrip("/")
+    host = urlparse(base).hostname or ""
+    name = f"TrustTunnel-Setup_{host}.exe" if host else "TrustTunnel-Setup.exe"
     return FileResponse(
-        WIN_INSTALLER, media_type="application/octet-stream",
-        filename="TrustTunnel-Setup.exe",
+        WIN_INSTALLER, media_type="application/octet-stream", filename=name,
     )
 
 
@@ -187,6 +200,17 @@ def download_android():
     return FileResponse(
         ANDROID_APK, media_type="application/vnd.android.package-archive",
         filename="TrustTunnel.apk",
+    )
+
+
+@router.get("/download/android-armv7")
+def download_android_v7():
+    """Сборка для старых телефонов (32-битный ARM)."""
+    if not os.path.exists(ANDROID_APK_V7):
+        raise HTTPException(404, "Сборка для armv7 ещё не загружена администратором")
+    return FileResponse(
+        ANDROID_APK_V7, media_type="application/vnd.android.package-archive",
+        filename="TrustTunnel-armv7.apk",
     )
 
 

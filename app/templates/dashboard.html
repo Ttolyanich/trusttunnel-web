@@ -19,6 +19,14 @@
     <a href="/download/android" class="btn" style="font-weight:600;">{{ icon('smartphone', 16) }} <span>Скачать для Android</span></a>
     {% endif %}
   </div>
+  {% if android_v7 %}
+  <!-- Ядро туннеля — статический бинарь под конкретную архитектуру, поэтому для
+       старых телефонов нужна своя сборка. -->
+  <p class="mut" style="margin:8px 0 0;font-size:12px;">
+    Не устанавливается или телефон старый?
+    <a href="/download/android-armv7">Сборка для armv7 (32-бит)</a>
+  </p>
+  {% endif %}
   {% if android_sha256 %}
   <!-- APK ставится мимо магазина: сверка суммы — единственный способ убедиться,
        что скачался именно наш файл. -->
