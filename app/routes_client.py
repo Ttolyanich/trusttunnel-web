@@ -1,7 +1,7 @@
 """Клиентская часть: /login, /register, /dashboard, конфиги, сброс пароля, скачивание."""
 import os
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
@@ -100,12 +100,17 @@ def device_enroll_qr(request: Request):
     # Код во фрагменте: он не попадает в логи сервера и в Referer, если ссылку
     # всё же откроют браузером.
     link = f"{base}/e#{raw}"
+    # Своя схема — для случая, когда кабинет открыт на самом телефоне: нажатие
+    # открывает приложение и привязывает устройство без компьютера и без камеры.
+    # Адрес сервера приходится передавать явно: у своей схемы нет origin.
+    app_link = f"ttsuperlink://enroll?server={quote(base, safe='')}#{raw}"
     return templates.TemplateResponse(
         request, "device_qr.html",
         {
             "brand": _brand(), "user": user,
             "qr_svg": qr.svg(link),
             "link": link,
+            "app_link": app_link,
             "ttl": ENROLL_TTL_SECONDS,
         },
     )
