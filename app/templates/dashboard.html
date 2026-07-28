@@ -36,13 +36,15 @@
   {% endif %}
 
   <p class="mut" style="margin:14px 0 6px;font-size:12px;">
-    Альтернатива — официальные приложения TrustTunnel. В них настройки вводятся
+    Альтернатива — другие приложения TrustTunnel. В них настройки вводятся
     вручную из раздела «Мои конфиги» ниже.
   </p>
   <div style="display:flex;gap:10px;flex-wrap:wrap;">
     <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Android (оригинал)</span></a>
     <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>iOS</span></a>
-    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>macOS / Linux</span></a>
+    <!-- Trusty — сторонний GUI поверх официального CLI. Linux он не поддерживает:
+         только Windows 10/11 и macOS 11+. Обещать Linux нечестно — ставить нечего. -->
+    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>macOS / Windows (Trusty)</span></a>
   </div>
   {% else %}
   <p class="mut" style="margin-top:-6px;margin-bottom:18px;font-size:13.5px;line-height:1.4;">
@@ -51,7 +53,7 @@
   <div style="display:flex;gap:12px;flex-wrap:wrap;">
     <a href="https://agrd.io/ios_trusttunnel" target="_blank" rel="noopener" class="store ios">{{ icon('smartphone', 16) }} <span>App Store (iOS)</span></a>
     <a href="https://agrd.io/android_trusttunnel" target="_blank" rel="noopener" class="store android">{{ icon('smartphone', 16) }} <span>Google Play (Android)</span></a>
-    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>Windows / macOS / Linux</span></a>
+    <a href="https://github.com/Meddelin/trusty" target="_blank" rel="noopener" class="btn ghost">{{ icon('monitor', 16) }} <span>Windows / macOS (Trusty)</span></a>
   </div>
   {% endif %}
 </div>
