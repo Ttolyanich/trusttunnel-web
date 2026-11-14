@@ -9,7 +9,12 @@ from .deeplink import build_deeplink
 def connection_info(cfg: sqlite3.Row, settings: dict[str, str]) -> dict:
     domain = endpoint.effective_domain(settings)          # домен из сертификата
     address = (settings.get("conn_address") or "").strip() or domain or config.PUBLIC_ADDRESS
-    port = settings.get("conn_port", "8443")
+    raw_port = settings.get("conn_port", "8443")
+    try:
+        port_num = int(str(raw_port).strip()) if raw_port else 8443
+    except (ValueError, TypeError):
+        port_num = 8443
+    port = str(port_num)
     info = {
         "label": cfg["label"] or cfg["tt_username"],
         "address": address,
@@ -19,7 +24,7 @@ def connection_info(cfg: sqlite3.Row, settings: dict[str, str]) -> dict:
         "username": cfg["tt_username"],
         "password": cfg["tt_password"],
         "protocol": settings.get("conn_protocol", "QUIC"),
-        "deeplink": build_deeplink(cfg["tt_username"], cfg["tt_password"], address or domain, int(port or "8443")),
+        "deeplink": build_deeplink(cfg["tt_username"], cfg["tt_password"], address or domain, port_num),
         # какие поля показывать
         "show_address": settings.get("show_address") == "1",
         "show_port": settings.get("show_port") == "1",

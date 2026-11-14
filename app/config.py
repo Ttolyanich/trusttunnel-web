@@ -4,7 +4,8 @@ import secrets
 from pathlib import Path
 
 # Каталог с данными (SQLite, сгенерированные конфиги endpoint'а).
-DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
+_default_data = str(Path(__file__).resolve().parent.parent / "data") if os.name == "nt" else "/data"
+DATA_DIR = Path(os.environ.get("DATA_DIR", _default_data))
 RUNTIME_DIR = Path(os.environ.get("RUNTIME_DIR", str(DATA_DIR / "runtime")))
 DB_PATH = os.environ.get("DB_PATH", str(DATA_DIR / "trusttunnel-web.db"))
 

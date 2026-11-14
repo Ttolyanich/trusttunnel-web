@@ -91,7 +91,7 @@
 
 <div class="card">
   <h2>{{ icon('plus') }} Новый конфиг</h2>
-  <form method="post" action="/configs" class="row">
+  <form method="post" action="/configs" class="row" onsubmit="this.querySelector('button[type=submit]').disabled=true;">
     <div class="field grow"><label>Метка устройства</label><input name="label" placeholder="Телефон, ноутбук…"></div>
     <button type="submit">{{ icon('plus') }} Создать конфиг</button>
   </form>

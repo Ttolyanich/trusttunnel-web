@@ -214,11 +214,19 @@ def create_admin(email: str, recovery_email: str | None, password_hash: str) -> 
         return cur.lastrowid
 
 
-def set_admin_recovery_email(admin_id: int, recovery_email: str) -> None:
+def set_admin_recovery_email(admin_id: int, recovery_email: str | None) -> None:
     with connect() as conn:
         conn.execute(
             "UPDATE admins SET recovery_email = ? WHERE id = ?",
             (recovery_email.strip().lower() if recovery_email else None, admin_id)
+        )
+
+
+def set_admin_email(admin_id: int, email: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE admins SET email = ? WHERE id = ?",
+            (email.strip().lower(), admin_id)
         )
 
 
@@ -481,6 +489,11 @@ def get_email_token(token: str) -> sqlite3.Row | None:
 def delete_email_token(token: str) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM email_tokens WHERE token = ?", (token,))
+
+
+def purge_expired_email_tokens() -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM email_tokens WHERE expires_at < datetime('now')")
 
 
 def counts() -> dict[str, int]:

@@ -16,7 +16,11 @@ def current_user(request: Request) -> sqlite3.Row | None:
     payload = security.decode_session_token(tok)
     if not payload or payload.get("kind") != "user":
         return None
-    user = db.get_user(int(payload["sub"]))
+    try:
+        user_id = int(payload["sub"])
+    except (ValueError, TypeError, KeyError):
+        return None
+    user = db.get_user(user_id)
     if user is None or user["status"] != "active":
         return None
     return user
@@ -29,7 +33,11 @@ def current_admin(request: Request) -> sqlite3.Row | None:
     payload = security.decode_session_token(tok)
     if not payload or payload.get("kind") != "admin":
         return None
+    try:
+        admin_id = int(payload["sub"])
+    except (ValueError, TypeError, KeyError):
+        return None
     with db.connect() as conn:
         return conn.execute(
-            "SELECT * FROM admins WHERE id = ?", (int(payload["sub"]),)
+            "SELECT * FROM admins WHERE id = ?", (admin_id,)
         ).fetchone()

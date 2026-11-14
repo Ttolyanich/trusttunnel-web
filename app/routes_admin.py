@@ -127,6 +127,10 @@ def user_password(request: Request, user_id: int, password: str = Form()):
 def user_email(request: Request, user_id: int, email: str = Form()):
     if not webauth.current_admin(request):
         return RedirectResponse("/admin/login", 302)
+    email = email.strip().lower()
+    existing = db.get_user_by_email(email)
+    if existing and existing["id"] != user_id:
+        return RedirectResponse(f"/admin/users/{user_id}?err=E-mail уже занят другим пользователем", 302)
     db.set_user_email(user_id, email)
     return RedirectResponse(f"/admin/users/{user_id}?msg=E-mail обновлён", 302)
 
@@ -304,9 +308,5 @@ def admin_profile(request: Request, email: str = Form(), recovery_email: str = F
         return RedirectResponse("/admin/dashboard?err=Логин уже занят другим администратором", 302)
         
     db.set_admin_recovery_email(admin["id"], recovery_email)
-    
-    # Обновить email (логин)
-    with db.connect() as conn:
-        conn.execute("UPDATE admins SET email = ? WHERE id = ?", (email, admin["id"]))
-        
+    db.set_admin_email(admin["id"], email)
     return RedirectResponse("/admin/dashboard?msg=Профиль успешно обновлён", 302)

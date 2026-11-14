@@ -4,6 +4,7 @@
 и оно же (через endpoint.manager) супервизит VPN-endpoint в том же контейнере.
 """
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -11,11 +12,18 @@ from fastapi.staticfiles import StaticFiles
 from . import db, endpoint
 from .config import DATA_DIR
 
+BASE_DIR = Path(__file__).resolve().parent
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     db.init_db()
+    try:
+        db.purge_expired_enroll_codes()
+        db.purge_expired_email_tokens()
+    except Exception:
+        pass
     # Свести файлы endpoint'а к текущим настройкам и запустить (если есть домен+серт).
     try:
         endpoint.manager.reconcile()
@@ -27,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="trusttunnel-web", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 @app.get("/healthz")
