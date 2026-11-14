@@ -267,22 +267,47 @@ def login(request: Request, email: str = Form(), password: str = Form(), next: s
     return resp
 
 
+def _make_captcha():
+    import random
+    import hashlib
+    import hmac
+    from . import config
+
+    a = random.randint(1, 9)
+    b = random.randint(1, 9)
+    ans = str(a + b)
+    nonce = security.new_token(12)
+    sig = hmac.new(config.SECRET_KEY.encode(), f"{ans}:{nonce}".encode(), hashlib.sha256).hexdigest()
+    return a, b, f"{nonce}:{sig}"
+
+
+def _verify_captcha(user_input: str, cookie_val: str | None) -> bool:
+    import hashlib
+    import hmac
+    from . import config
+
+    if not cookie_val or not user_input:
+        return False
+    parts = cookie_val.split(":", 1)
+    if len(parts) != 2:
+        return False
+    nonce, sig = parts
+    expected_sig = hmac.new(
+        config.SECRET_KEY.encode(), f"{user_input.strip()}:{nonce}".encode(), hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(sig, expected_sig)
+
+
 @router.get("/register", response_class=HTMLResponse)
 def register_form(request: Request):
     if db.get_setting("registration_enabled") != "1":
         return RedirectResponse("/login", 302)
-    import random
-    import hashlib
-    a = random.randint(1, 9)
-    b = random.randint(1, 9)
-    ans = a + b
-    salt = "trusttunnel-captcha-salt"
-    h = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+    a, b, cookie_val = _make_captcha()
     resp = templates.TemplateResponse(
         request, "register.html",
         {"brand": _brand(), "error": None, "captcha_a": a, "captcha_b": b},
     )
-    resp.set_cookie("captcha_hash", h, max_age=300, httponly=True, samesite="lax")
+    resp.set_cookie("captcha_hash", cookie_val, max_age=300, httponly=True, samesite="lax")
     return resp
 
 
@@ -290,53 +315,40 @@ def register_form(request: Request):
 def register(request: Request, email: str = Form(), password: str = Form(), captcha: str = Form()):
     if db.get_setting("registration_enabled") != "1":
         return RedirectResponse("/login", 302)
-    import random
-    import hashlib
-    
+
     # Верификация капчи
     cookie_hash = request.cookies.get("captcha_hash")
-    salt = "trusttunnel-captcha-salt"
-    user_hash = hashlib.sha256(f"{captcha.strip()}-{salt}".encode()).hexdigest()
-    if not cookie_hash or user_hash != cookie_hash:
-        a = random.randint(1, 9)
-        b = random.randint(1, 9)
-        ans = a + b
-        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+    if not _verify_captcha(captcha, cookie_hash):
+        a, b, new_cookie = _make_captcha()
         resp = templates.TemplateResponse(
             request, "register.html",
             {"brand": _brand(), "error": "Неверный ответ на проверочный вопрос", "captcha_a": a, "captcha_b": b},
             status_code=400,
         )
-        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        resp.set_cookie("captcha_hash", new_cookie, max_age=300, httponly=True, samesite="lax")
         return resp
-        
+
     email = email.strip().lower()
     if len(password) < 6:
-        a = random.randint(1, 9)
-        b = random.randint(1, 9)
-        ans = a + b
-        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+        a, b, new_cookie = _make_captcha()
         resp = templates.TemplateResponse(
             request, "register.html",
             {"brand": _brand(), "error": "Пароль слишком короткий (мин. 6)", "captcha_a": a, "captcha_b": b},
             status_code=400,
         )
-        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        resp.set_cookie("captcha_hash", new_cookie, max_age=300, httponly=True, samesite="lax")
         return resp
-        
+
     if db.get_user_by_email(email):
-        a = random.randint(1, 9)
-        b = random.randint(1, 9)
-        ans = a + b
-        new_hash = hashlib.sha256(f"{ans}-{salt}".encode()).hexdigest()
+        a, b, new_cookie = _make_captcha()
         resp = templates.TemplateResponse(
             request, "register.html",
             {"brand": _brand(), "error": "Такой e-mail уже зарегистрирован", "captcha_a": a, "captcha_b": b},
             status_code=400,
         )
-        resp.set_cookie("captcha_hash", new_hash, max_age=300, httponly=True, samesite="lax")
+        resp.set_cookie("captcha_hash", new_cookie, max_age=300, httponly=True, samesite="lax")
         return resp
-        
+
     db.create_user(email, security.hash_password(password), status="pending")
     resp = RedirectResponse("/login?msg=Регистрация успешна. Ожидайте подтверждения аккаунта администратором.", 302)
     resp.delete_cookie("captcha_hash")
@@ -428,7 +440,7 @@ def delete_config(request: Request, config_id: int):
     if not user:
         return RedirectResponse("/login", 302)
     cfg = db.get_config(config_id)
-    if cfg and cfg["user_id"] == user["id"]:
+    if cfg and cfg["user_id"] == user["id"] and cfg["revoked_at"] is None:
         db.delete_config(config_id)
         endpoint.manager.apply_credentials()
     return RedirectResponse("/", 302)
@@ -440,7 +452,7 @@ def download_config(request: Request, config_id: int, fmt: str = "txt"):
     if not user:
         return RedirectResponse("/login", 302)
     cfg = db.get_config(config_id)
-    if not cfg or cfg["user_id"] != user["id"]:
+    if not cfg or cfg["user_id"] != user["id"] or cfg["revoked_at"] is not None:
         return PlainTextResponse("Not found", status_code=404)
     info = conninfo.connection_info(cfg, db.get_settings())
     raw_name = cfg["label"] or cfg["tt_username"]

@@ -317,7 +317,10 @@ def list_all_configs() -> list[sqlite3.Row]:
 
 def delete_config(config_id: int) -> None:
     with connect() as conn:
-        conn.execute("DELETE FROM configs WHERE id = ?", (config_id,))
+        conn.execute(
+            "UPDATE configs SET revoked_at = datetime('now') WHERE id = ? AND revoked_at IS NULL",
+            (config_id,),
+        )
 
 
 def active_credentials() -> list[dict]:

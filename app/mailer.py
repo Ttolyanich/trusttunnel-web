@@ -27,9 +27,9 @@ def send_mail(to: str, subject: str, body: str) -> None:
     msg.set_content(body)
 
     if tls == "ssl":
-        server: smtplib.SMTP = smtplib.SMTP_SSL(host, port, timeout=15)
+        server = smtplib.SMTP_SSL(host, port, timeout=10)
     else:
-        server = smtplib.SMTP(host, port, timeout=15)
+        server = smtplib.SMTP(host, port, timeout=10)
     try:
         if tls == "starttls":
             server.starttls()
@@ -37,4 +37,7 @@ def send_mail(to: str, subject: str, body: str) -> None:
             server.login(user, password)
         server.send_message(msg)
     finally:
-        server.quit()
+        try:
+            server.quit()
+        except Exception:
+            pass

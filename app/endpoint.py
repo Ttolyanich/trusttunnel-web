@@ -206,6 +206,7 @@ class EndpointManager:
         self._lock = threading.RLock()
         self._cert_mtime: float | None = None
         self._watcher_stop = threading.Event()
+        self._restart_timer: threading.Timer | None = None
 
     # -- низкоуровневое управление процессом --
     def _is_running(self) -> bool:
@@ -216,31 +217,47 @@ class EndpointManager:
         if not bin_path.exists():
             print(f"[endpoint] binary not found at {bin_path}; endpoint disabled")
             return
-        try:
-            self._proc = subprocess.Popen(
-                [str(bin_path), "vpn.toml", "hosts.toml"],
-                cwd=config.ENDPOINT_WORKDIR,
-            )
-            print(f"[endpoint] started (pid={self._proc.pid})")
-        except OSError as e:
-            print(f"[endpoint] failed to start: {e}")
-            self._proc = None
+        for attempt in range(1, 4):
+            try:
+                self._proc = subprocess.Popen(
+                    [str(bin_path), "vpn.toml", "hosts.toml"],
+                    cwd=config.ENDPOINT_WORKDIR,
+                )
+                time.sleep(0.15)
+                ret = self._proc.poll()
+                if ret is None:
+                    print(f"[endpoint] started (pid={self._proc.pid})")
+                    return
+                print(f"[endpoint] process exited immediately (code {ret}), attempt {attempt}/3")
+                self._proc = None
+                time.sleep(0.5)
+            except OSError as e:
+                print(f"[endpoint] failed to start (attempt {attempt}/3): {e}")
+                self._proc = None
+                time.sleep(0.5)
 
     def _kill(self) -> None:
         if self._is_running():
             assert self._proc is not None
             self._proc.terminate()
             try:
-                self._proc.wait(timeout=10)
+                self._proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._proc.kill()
+                try:
+                    self._proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
         self._proc = None
+        # Даём ОС гарантированно освободить сокеты (TCP/UDP порт 8443)
+        time.sleep(0.3)
 
     # -- публичные операции --
-    def reconcile(self, restart_for_creds: bool = False) -> None:
+    def reconcile(self, restart_for_creds: bool = False, force_restart: bool = False) -> None:
         """Свести файлы endpoint'а к текущим настройкам/кредам и (пере)запустить.
 
-        restart_for_creds=True → форсируем рестарт (смена кредов).
+        restart_for_creds=True → форсируем рестарт при изменении кредов.
+        force_restart=True → форсируем рестарт, даже если credentials.toml уже был записан на диск.
         Иначе: старт, если не запущен; SIGHUP, если менялся hosts.toml/серт.
         """
         with self._lock:
@@ -274,7 +291,7 @@ class EndpointManager:
             if not self._is_running():
                 self._spawn()
                 return
-            if restart_for_creds and creds_changed:
+            if (restart_for_creds and creds_changed) or force_restart:
                 print("[endpoint] credentials changed — restarting")
                 self._kill()
                 self._spawn()
@@ -283,14 +300,47 @@ class EndpointManager:
                 print("[endpoint] TLS host changed — SIGHUP")
                 self._sighup()
 
-    def apply_credentials(self) -> None:
-        """Вызывать после создания/удаления конфига или блокировки юзера."""
-        self.reconcile(restart_for_creds=True)
+    def apply_credentials(self, delay: float = 1.5) -> None:
+        """Обновить credentials.toml и запланировать отложенный рестарт endpoint'а.
+
+        Задержка (дебаунс):
+        - Если пользователь создаёт/удаляет конфиг из-под самого VPN, его HTTP-запрос
+          успевает завершиться (302 Redirect + загрузка страницы), и браузер не рвёт
+          соединение с ошибкой (HTTP 499 / ERR_CONNECTION_RESET).
+        - Серия быстрых кликов группируется в один чистый рестарт.
+        """
+        with self._lock:
+            creds_changed = write_credentials_toml(db.active_credentials())
+            if not self._is_running():
+                self.reconcile(restart_for_creds=True, force_restart=True)
+                return
+            if not creds_changed:
+                return
+
+            if delay <= 0:
+                self.reconcile(restart_for_creds=True, force_restart=True)
+                return
+
+            if self._restart_timer is not None:
+                self._restart_timer.cancel()
+
+            def _do_restart():
+                with self._lock:
+                    self._restart_timer = None
+                    print("[endpoint] applying scheduled restart for credentials")
+                    self.reconcile(restart_for_creds=True, force_restart=True)
+
+            self._restart_timer = threading.Timer(delay, _do_restart)
+            self._restart_timer.daemon = True
+            self._restart_timer.start()
 
     def apply_settings(self) -> None:
         """Вызывать после сохранения настроек (домен/порт/серт/SNI)."""
         # Смена порта требует нового listen — надёжнее полный рестарт.
         with self._lock:
+            if self._restart_timer is not None:
+                self._restart_timer.cancel()
+                self._restart_timer = None
             self._kill()
         self.reconcile()
 
@@ -304,6 +354,9 @@ class EndpointManager:
 
     def stop(self) -> None:
         with self._lock:
+            if self._restart_timer is not None:
+                self._restart_timer.cancel()
+                self._restart_timer = None
             self._watcher_stop.set()
             self._kill()
 

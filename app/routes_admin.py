@@ -1,4 +1,5 @@
 """Админка /admin: единственная роль. Управление пользователями, конфигами, настройками."""
+import anyio
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -215,8 +216,9 @@ def admin_delete_config(request: Request, config_id: int):
     if not webauth.current_admin(request):
         return RedirectResponse("/admin/login", 302)
     cfg = db.get_config(config_id)
-    db.delete_config(config_id)
-    endpoint.manager.apply_credentials()
+    if cfg and cfg["revoked_at"] is None:
+        db.delete_config(config_id)
+        endpoint.manager.apply_credentials()
     target = f"/admin/users/{cfg['user_id']}" if cfg else "/admin/configs"
     return RedirectResponse(f"{target}?msg=Конфиг удалён", 302)
 
@@ -272,8 +274,8 @@ async def settings_save(request: Request):
             updates[key] = "1" if form.get(key) else "0"
         elif key in form:
             updates[key] = str(form.get(key)).strip()
-    db.set_settings(updates)
-    endpoint.manager.apply_settings()  # применить домен/порт/серт к endpoint'у
+    await anyio.to_thread.run_sync(db.set_settings, updates)
+    await anyio.to_thread.run_sync(endpoint.manager.apply_settings)
     return RedirectResponse("/admin/settings?msg=Настройки сохранены", 302)
 
 
